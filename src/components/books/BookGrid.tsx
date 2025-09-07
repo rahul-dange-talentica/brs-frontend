@@ -99,12 +99,12 @@ export const BookGrid: React.FC<BookGridProps> = ({
             <BookCard
               book={book}
               onClick={onBookClick}
-              onFavoriteClick={onFavoriteClick}
+              // onFavoriteClick is now handled by FavoriteButton component
               onShareClick={onShareClick}
               showFavorite={showFavorites}
               showGenre={showGenres}
               variant={variant}
-              isFavorite={favoriteBooks.includes(book.id)}
+              // isFavorite is now handled by FavoriteButton component
             />
           </Grid>
         ))

@@ -6,8 +6,6 @@ import {
 } from '@mui/material';
 import { 
   MainLayout, 
-  Section, 
-  Breadcrumbs, 
   ProtectedRoute 
 } from './components/common';
 import { 
@@ -18,6 +16,12 @@ import {
   BookDetailsPage,
   UserReviewsPage 
 } from './pages';
+import { 
+  UserProfilePage,
+  EditProfilePage,
+  FavoritesPage
+} from './components/user';
+import UserDashboard from './pages/UserDashboard';
 import { useAuth } from './hooks';
 import { useAppDispatch } from './store/hooks';
 import { setInitialized } from './store/authSlice';
@@ -107,8 +111,42 @@ function App() {
         />
 
         {/* Protected routes - require authentication */}
+        
+        {/* User Dashboard */}
         <Route 
-          path="/my-reviews" 
+          path="/dashboard" 
+          element={
+            <ProtectedRoute requireAuth={true}>
+              <MainLayout>
+                <UserDashboard />
+              </MainLayout>
+            </ProtectedRoute>
+          } 
+        />
+        
+        {/* User Profile Routes */}
+        <Route 
+          path="/profile" 
+          element={
+            <ProtectedRoute requireAuth={true}>
+              <MainLayout>
+                <UserProfilePage />
+              </MainLayout>
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/profile/edit" 
+          element={
+            <ProtectedRoute requireAuth={true}>
+              <MainLayout>
+                <EditProfilePage />
+              </MainLayout>
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/profile/reviews" 
           element={
             <ProtectedRoute requireAuth={true}>
               <MainLayout>
@@ -118,7 +156,7 @@ function App() {
           } 
         />
         <Route 
-          path="/favorites" 
+          path="/profile/favorites" 
           element={
             <ProtectedRoute requireAuth={true}>
               <MainLayout>
@@ -127,25 +165,19 @@ function App() {
             </ProtectedRoute>
           } 
         />
+        
+        {/* Backwards compatibility routes */}
         <Route 
-          path="/profile" 
-          element={
-            <ProtectedRoute requireAuth={true}>
-              <MainLayout>
-                <ProfilePage />
-              </MainLayout>
-            </ProtectedRoute>
-          } 
+          path="/my-reviews" 
+          element={<Navigate to="/profile/reviews" replace />}
+        />
+        <Route 
+          path="/favorites" 
+          element={<Navigate to="/profile/favorites" replace />}
         />
         <Route 
           path="/settings" 
-          element={
-            <ProtectedRoute requireAuth={true}>
-              <MainLayout>
-                <SettingsPage />
-              </MainLayout>
-            </ProtectedRoute>
-          } 
+          element={<Navigate to="/profile/edit" replace />}
         />
 
         {/* Public routes - accessible to everyone */}
@@ -180,34 +212,6 @@ function App() {
   );
 }
 
-// Placeholder page components (keeping for future use)
-
-
-const FavoritesPage = () => (
-  <Box>
-    <Breadcrumbs />
-    <Section title="Favorites" subtitle="Your favorite books and reading lists">
-      <Typography>Favorites feature will be implemented with user profiles in Task 08.</Typography>
-    </Section>
-  </Box>
-);
-
-const ProfilePage = () => (
-  <Box>
-    <Breadcrumbs />
-    <Section title="Profile" subtitle="Manage your account and preferences">
-      <Typography>User profile features will be implemented in Task 08.</Typography>
-    </Section>
-  </Box>
-);
-
-const SettingsPage = () => (
-  <Box>
-    <Breadcrumbs />
-    <Section title="Settings" subtitle="Customize your BookReview experience">
-      <Typography>Settings and preferences will be implemented with user profiles.</Typography>
-    </Section>
-  </Box>
-);
+// User profile system implemented in Task 08
 
 export default App;

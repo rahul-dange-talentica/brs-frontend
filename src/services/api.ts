@@ -35,6 +35,9 @@ apiClient.interceptors.request.use(
     const token = localStorage.getItem('authToken');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
+      console.log('🔑 Adding auth token to request:', config.url);
+    } else {
+      console.warn('⚠️ No auth token found for request:', config.url);
     }
     
     // Add timestamp to requests to prevent caching issues

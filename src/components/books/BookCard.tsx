@@ -14,41 +14,35 @@ import {
   Tooltip,
   Chip,
 } from '@mui/material';
-import { Favorite, FavoriteBorder, Share } from '@mui/icons-material';
+import { Share } from '@mui/icons-material';
 import { BookDisplay } from '@/types';
 import { getPrimaryGenre, getPublicationYear, getBookCoverImage } from '@/utils/bookTransformers';
 import { BookCover } from './BookCover';
 import { RatingDisplay } from './RatingDisplay';
+import { FavoriteButton } from '@/components/user';
 
 interface BookCardProps {
   book: BookDisplay;
   onClick?: (book: BookDisplay) => void;
-  onFavoriteClick?: (bookId: string) => void;
   onShareClick?: (book: BookDisplay) => void;
   showFavorite?: boolean;
   showGenre?: boolean;
   variant?: 'compact' | 'detailed';
-  isFavorite?: boolean;
 }
 
 export const BookCard: React.FC<BookCardProps> = ({
   book,
   onClick,
-  onFavoriteClick,
   onShareClick,
   showFavorite = false,
   showGenre = false,
-  variant = 'compact',
-  isFavorite = false
+  variant = 'compact'
 }) => {
   const handleCardClick = () => {
     onClick?.(book);
   };
 
-  const handleFavoriteClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    onFavoriteClick?.(book.id);
-  };
+  // Favorite functionality is now handled by FavoriteButton component
 
   const handleShareClick = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -91,21 +85,22 @@ export const BookCard: React.FC<BookCardProps> = ({
           }}
         >
           {showFavorite && (
-            <Tooltip title={isFavorite ? 'Remove from favorites' : 'Add to favorites'}>
-              <IconButton
+            <Box
+              sx={{
+                backgroundColor: 'rgba(255, 255, 255, 0.9)',
+                borderRadius: '50%',
+                '&:hover': {
+                  backgroundColor: 'rgba(255, 255, 255, 1)',
+                },
+              }}
+              onClick={(e: React.MouseEvent) => e.stopPropagation()}
+            >
+              <FavoriteButton
+                bookId={book.id}
+                variant="icon"
                 size="small"
-                onClick={handleFavoriteClick}
-                sx={{
-                  backgroundColor: 'rgba(255, 255, 255, 0.9)',
-                  color: isFavorite ? 'error.main' : 'action.active',
-                  '&:hover': {
-                    backgroundColor: 'rgba(255, 255, 255, 1)',
-                  },
-                }}
-              >
-                {isFavorite ? <Favorite /> : <FavoriteBorder />}
-              </IconButton>
-            </Tooltip>
+              />
+            </Box>
           )}
           
           {onShareClick && (

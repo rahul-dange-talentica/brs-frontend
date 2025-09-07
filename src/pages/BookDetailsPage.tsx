@@ -76,11 +76,7 @@ export const BookDetailsPage: React.FC = () => {
     }
   }, [currentBook]);
 
-  const handleFavoriteToggle = async (bookId: string, isFavorite: boolean) => {
-    // TODO: Implement favorite toggle functionality
-    console.log('Favorite toggle:', bookId, isFavorite);
-    return Promise.resolve();
-  };
+  // Favorite functionality is now handled by FavoriteButton component
 
   const handleShareBook = (book: BookDisplay) => {
     // TODO: Implement sharing functionality
@@ -205,7 +201,6 @@ export const BookDetailsPage: React.FC = () => {
             
             <BookActions
               book={displayBook}
-              onFavoriteToggle={handleFavoriteToggle}
               onShareClick={handleShareBook}
               variant="detailed"
               showLabels

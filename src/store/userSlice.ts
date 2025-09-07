@@ -1,16 +1,23 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
-import { UserProfile, Book, ApiError } from '../types';
+import { UserProfile, Book, ApiError, Review } from '../types';
 import { userService } from '@/services';
 import { handleAPIError, getValidationErrors } from '@/utils/errorHandler';
 import { AxiosError } from 'axios';
+import { UserActivity, UserStatistics } from '@/components/user/types';
 
 interface UserState {
   profile: UserProfile | null;
   favoriteBooks: Book[];
   readingList: Book[];
+  userReviews: Review[];
+  recentActivity: UserActivity[];
+  statistics: UserStatistics | null;
   loading: boolean;
   favoritesLoading: boolean;
   readingListLoading: boolean;
+  profileUpdateLoading: boolean;
+  statisticsLoading: boolean;
+  activityLoading: boolean;
   error: string | null;
   preferences: {
     theme: 'light' | 'dark' | 'system';
@@ -38,9 +45,15 @@ const initialState: UserState = {
   profile: null,
   favoriteBooks: [],
   readingList: [],
+  userReviews: [],
+  recentActivity: [],
+  statistics: null,
   loading: false,
   favoritesLoading: false,
   readingListLoading: false,
+  profileUpdateLoading: false,
+  statisticsLoading: false,
+  activityLoading: false,
   error: null,
   preferences: {
     theme: 'light',
@@ -60,12 +73,43 @@ export const fetchUserProfile = createAsyncThunk<
   try {
     const response = await userService.getProfile();
     
-    if (response.success && response.user) {
-      return response.user;
-    } else {
-      throw new Error('Failed to fetch user profile');
+    console.log('Profile API response:', response); // Debug logging
+    
+    // Handle different response formats more flexibly
+    if (response && typeof response === 'object') {
+      // If response has success field and user field
+      if (response.success && response.user) {
+        return response.user;
+      }
+      // If response is the user object directly with snake_case fields
+      if (response.id && response.email) {
+        // Transform snake_case to camelCase for frontend
+        const transformedProfile: UserProfile = {
+          id: response.id,
+          email: response.email,
+          firstName: response.first_name || response.firstName || '',
+          lastName: response.last_name || response.lastName || '',
+          avatar: response.avatar || response.avatar_url,
+          bio: response.bio || '',
+          favoriteGenres: response.favorite_genres || response.favoriteGenres || [],
+          totalReviews: response.total_reviews || response.totalReviews || 0,
+          averageRating: response.average_rating || response.averageRating || 0,
+          createdAt: response.created_at || response.createdAt || '',
+          updatedAt: response.updated_at || response.updatedAt || '',
+        };
+        console.log('Transformed profile data:', transformedProfile);
+        return transformedProfile;
+      }
+      // If response already has camelCase fields
+      if (response.firstName || response.first_name) {
+        return response as UserProfile;
+      }
     }
+    
+    console.error('Unexpected profile response format:', response);
+    throw new Error('Invalid profile response format');
   } catch (error: any) {
+    console.error('Profile fetch error:', error);
     if (error instanceof AxiosError) {
       return rejectWithValue({
         message: handleAPIError(error),
@@ -85,14 +129,44 @@ export const updateUserProfile = createAsyncThunk<
   { rejectValue: ApiError }
 >('user/updateProfile', async (updateData, { rejectWithValue }) => {
   try {
+    console.log('updateUserProfile thunk called with:', updateData);
     const response = await userService.updateProfile(updateData);
     
-    if (response.success && response.user) {
-      return response.user;
-    } else {
-      throw new Error(response.message || 'Failed to update profile');
+    console.log('updateUserProfile response:', response);
+    
+    // Handle different response formats more flexibly
+    if (response && typeof response === 'object') {
+      // If response has success field and user field
+      if (response.success && response.user) {
+        return response.user;
+      }
+      // If response is the user object directly
+      if (response.id && response.email) {
+        return response as UserProfile;
+      }
+      // If response has user data but different structure (snake_case to camelCase)
+      if (response.firstName || response.first_name) {
+        const transformedProfile: UserProfile = {
+          id: response.id,
+          email: response.email,
+          firstName: response.first_name || response.firstName || '',
+          lastName: response.last_name || response.lastName || '',
+          avatar: response.avatar || response.avatar_url,
+          bio: response.bio || '',
+          favoriteGenres: response.favorite_genres || response.favoriteGenres || [],
+          totalReviews: response.total_reviews || response.totalReviews || 0,
+          averageRating: response.average_rating || response.averageRating || 0,
+          createdAt: response.created_at || response.createdAt || '',
+          updatedAt: response.updated_at || response.updatedAt || '',
+        };
+        console.log('Transformed update profile response:', transformedProfile);
+        return transformedProfile;
+      }
     }
+    
+    throw new Error('Invalid profile update response format');
   } catch (error: any) {
+    console.error('updateUserProfile error:', error);
     if (error instanceof AxiosError) {
       return rejectWithValue({
         message: handleAPIError(error),
@@ -103,6 +177,161 @@ export const updateUserProfile = createAsyncThunk<
     return rejectWithValue({
       message: error.message || 'Failed to update profile',
       status: 400,
+    });
+  }
+});
+
+export const fetchUserStatistics = createAsyncThunk<
+  UserStatistics,
+  void,
+  { rejectValue: ApiError }
+>('user/fetchStatistics', async (_, { rejectWithValue }) => {
+  try {
+    const response = await userService.getUserStats();
+    
+    console.log('Statistics API response:', response);
+    
+    if (response.success) {
+      // Transform backend stats to frontend UserStatistics format
+      return {
+        totalReviews: response.stats.totalReviews,
+        averageRating: response.stats.averageRating,
+        favoriteBooks: response.stats.totalFavorites,
+        monthlyReviews: 0, // Will be calculated from reviews
+        topGenres: response.stats.mostReviewedGenre ? [response.stats.mostReviewedGenre] : [],
+      };
+    } else {
+      console.warn('Statistics API returned success: false');
+      throw new Error('Failed to fetch user statistics');
+    }
+  } catch (error: any) {
+    console.error('fetchUserStatistics error:', error);
+    if (error instanceof AxiosError) {
+      return rejectWithValue({
+        message: handleAPIError(error),
+        status: error.response?.status || 500,
+      });
+    }
+    return rejectWithValue({
+      message: error.message || 'Failed to fetch user statistics',
+      status: 500,
+    });
+  }
+});
+
+export const fetchUserActivity = createAsyncThunk<
+  UserActivity[],
+  { limit?: number },
+  { rejectValue: ApiError }
+>('user/fetchActivity', async ({ limit = 10 }, { rejectWithValue, getState }) => {
+  try {
+    // Since there's no dedicated activity API, we'll generate activity from existing user data
+    const state = getState() as { user: UserState };
+    const { favoriteBooks, userReviews } = state.user;
+    
+    console.log('Generating activity from user data:', { 
+      favoriteBooks: favoriteBooks.length, 
+      userReviews: userReviews.length 
+    });
+    
+    const activities: UserActivity[] = [];
+    
+    // Generate activity from user reviews
+    userReviews.forEach((review) => {
+      activities.push({
+        id: `review-${review.id}`,
+        type: 'review',
+        bookId: review.bookId,
+        bookTitle: review.book?.title || 'Unknown Book',
+        bookCoverUrl: review.book?.cover_image || review.book?.coverImage,
+        action: `Wrote a review`,
+        timestamp: review.createdAt,
+        details: { 
+          rating: review.rating,
+          reviewText: review.reviewText?.substring(0, 100) + (review.reviewText && review.reviewText.length > 100 ? '...' : '')
+        }
+      });
+      
+      // Also add rating activity if different from review date
+      if (review.rating) {
+        activities.push({
+          id: `rating-${review.id}`,
+          type: 'rating',
+          bookId: review.bookId,
+          bookTitle: review.book?.title || 'Unknown Book',
+          bookCoverUrl: review.book?.cover_image || review.book?.coverImage,
+          action: `Rated ${review.rating} stars`,
+          timestamp: review.createdAt,
+          details: { rating: review.rating }
+        });
+      }
+    });
+    
+    // Generate activity from favorite books
+    favoriteBooks.forEach((book, index) => {
+      activities.push({
+        id: `favorite-${book.id}`,
+        type: 'favorite',
+        bookId: book.id,
+        bookTitle: book.title,
+        bookCoverUrl: book.cover_image || book.coverImage,
+        action: `Added to favorites`,
+        timestamp: book.updatedAt || book.createdAt || new Date(Date.now() - index * 24 * 60 * 60 * 1000).toISOString(),
+        details: {}
+      });
+    });
+    
+    // Sort activities by timestamp (most recent first) and limit
+    const sortedActivities = activities
+      .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+      .slice(0, limit);
+    
+    console.log('Generated activities:', sortedActivities.length);
+    
+    // If no real activity, show a helpful message instead of empty
+    if (sortedActivities.length === 0) {
+      return [{
+        id: 'welcome',
+        type: 'profile_update',
+        action: 'Welcome to Book Review System! Start by exploring books and writing reviews.',
+        timestamp: new Date().toISOString(),
+        details: {}
+      }];
+    }
+    
+    return sortedActivities;
+  } catch (error: any) {
+    console.error('Error generating user activity:', error);
+    return rejectWithValue({
+      message: error.message || 'Failed to fetch user activity',
+      status: 500,
+    });
+  }
+});
+
+export const fetchUserReviews = createAsyncThunk<
+  Review[],
+  { page?: number; limit?: number },
+  { rejectValue: ApiError }
+>('user/fetchUserReviews', async ({ page = 1, limit = 10 }, { rejectWithValue }) => {
+  try {
+    const response = await userService.getUserReviews(page, limit);
+    
+    if (response.success && response.reviews) {
+      return response.reviews;
+    } else {
+      throw new Error('Failed to fetch user reviews');
+    }
+  } catch (error: any) {
+    if (error instanceof AxiosError) {
+      return rejectWithValue({
+        message: handleAPIError(error),
+        status: error.response?.status || 500,
+      });
+    }
+    return rejectWithValue({
+      message: error.message || 'Failed to fetch user reviews',
+      status: 500,
     });
   }
 });
@@ -337,17 +566,59 @@ const userSlice = createSlice({
       })
       // Update user profile cases
       .addCase(updateUserProfile.pending, (state) => {
-        state.loading = true;
+        state.profileUpdateLoading = true;
         state.error = null;
       })
       .addCase(updateUserProfile.fulfilled, (state, action) => {
-        state.loading = false;
+        state.profileUpdateLoading = false;
         state.profile = action.payload;
         state.error = null;
       })
       .addCase(updateUserProfile.rejected, (state, action) => {
-        state.loading = false;
+        state.profileUpdateLoading = false;
         state.error = action.payload?.message || 'Failed to update profile';
+      })
+      // Fetch user statistics cases
+      .addCase(fetchUserStatistics.pending, (state) => {
+        state.statisticsLoading = true;
+        state.error = null;
+      })
+      .addCase(fetchUserStatistics.fulfilled, (state, action) => {
+        state.statisticsLoading = false;
+        state.statistics = action.payload;
+        state.error = null;
+      })
+      .addCase(fetchUserStatistics.rejected, (state, action) => {
+        state.statisticsLoading = false;
+        state.error = action.payload?.message || 'Failed to fetch statistics';
+      })
+      // Fetch user activity cases
+      .addCase(fetchUserActivity.pending, (state) => {
+        state.activityLoading = true;
+        state.error = null;
+      })
+      .addCase(fetchUserActivity.fulfilled, (state, action) => {
+        state.activityLoading = false;
+        state.recentActivity = action.payload;
+        state.error = null;
+      })
+      .addCase(fetchUserActivity.rejected, (state, action) => {
+        state.activityLoading = false;
+        state.error = action.payload?.message || 'Failed to fetch activity';
+      })
+      // Fetch user reviews cases
+      .addCase(fetchUserReviews.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(fetchUserReviews.fulfilled, (state, action) => {
+        state.loading = false;
+        state.userReviews = action.payload;
+        state.error = null;
+      })
+      .addCase(fetchUserReviews.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload?.message || 'Failed to fetch user reviews';
       })
       // Fetch favorite books cases
       .addCase(fetchFavoriteBooks.pending, (state) => {
@@ -430,9 +701,15 @@ export const {
 export const selectUserProfile = (state: { user: UserState }) => state.user.profile;
 export const selectFavoriteBooks = (state: { user: UserState }) => state.user.favoriteBooks;
 export const selectReadingList = (state: { user: UserState }) => state.user.readingList;
+export const selectUserReviews = (state: { user: UserState }) => state.user.userReviews;
+export const selectUserActivity = (state: { user: UserState }) => state.user.recentActivity;
+export const selectUserStatistics = (state: { user: UserState }) => state.user.statistics;
 export const selectUserLoading = (state: { user: UserState }) => state.user.loading;
 export const selectFavoritesLoading = (state: { user: UserState }) => state.user.favoritesLoading;
 export const selectReadingListLoading = (state: { user: UserState }) => state.user.readingListLoading;
+export const selectProfileUpdateLoading = (state: { user: UserState }) => state.user.profileUpdateLoading;
+export const selectStatisticsLoading = (state: { user: UserState }) => state.user.statisticsLoading;
+export const selectActivityLoading = (state: { user: UserState }) => state.user.activityLoading;
 export const selectUserError = (state: { user: UserState }) => state.user.error;
 export const selectUserPreferences = (state: { user: UserState }) => state.user.preferences;
 

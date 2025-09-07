@@ -199,9 +199,9 @@ export const fetchUserReviews = createAsyncThunk<
         },
         isOwn: true // User's own reviews
       } as Review));
-    } else if (response.success && response.reviews) {
+    } else if ((response as any).success && (response as any).reviews) {
       // Fallback to old format if success wrapper exists
-      return response.reviews.map(reviewWithBook => ({
+      return (response as any).reviews.map((reviewWithBook: any) => ({
         ...reviewWithBook,
         // Remove book information from review object to match Review interface
         book: undefined,
@@ -234,7 +234,7 @@ export const fetchAllReviews = createAsyncThunk<
     // For now, we'll fetch recent reviews from user service as a placeholder
     const response = await userService.getUserReviews(page, pageSize);
     
-    if (response.success) {
+    if (response.reviews) {
       return response.reviews.map(reviewWithBook => ({
         ...reviewWithBook,
         book: undefined, // Remove book info to match Review interface

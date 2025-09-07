@@ -7,7 +7,7 @@ import { useEffect, useRef } from 'react';
 import { useAppDispatch } from '@/store/hooks';
 import { updateBookRating } from '@/store/booksSlice';
 import { booksService } from '@/services';
-import { API_CONFIG } from '@/config/api';
+// import { API_CONFIG } from '@/config/api';
 
 interface UseRatingPollingOptions {
   enabled?: boolean;

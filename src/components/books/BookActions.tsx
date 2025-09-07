@@ -17,20 +17,17 @@ import {
   Alert,
 } from '@mui/material';
 import {
-  Favorite,
-  FavoriteBorder,
   Share,
   Link as LinkIcon,
   Twitter,
   Facebook,
 } from '@mui/icons-material';
+import { FavoriteButton } from '@/components/user';
 import { BookDisplay } from '@/types';
 import { useAuth } from '@/hooks/useAuth';
 
 interface BookActionsProps {
   book: BookDisplay;
-  isFavorite?: boolean;
-  onFavoriteToggle?: (bookId: string, isFavorite: boolean) => Promise<void>;
   onShareClick?: (book: BookDisplay) => void;
   variant?: 'detailed' | 'compact';
   showLabels?: boolean;
@@ -38,47 +35,15 @@ interface BookActionsProps {
 
 export const BookActions: React.FC<BookActionsProps> = ({
   book,
-  isFavorite = false,
-  onFavoriteToggle,
   onShareClick,
   variant = 'detailed',
   showLabels = true
 }) => {
-  const { user } = useAuth();
-  const [isToggling, setIsToggling] = useState(false);
   const [shareMenuAnchor, setShareMenuAnchor] = useState<null | HTMLElement>(null);
   const [notification, setNotification] = useState<{
     message: string;
     severity: 'success' | 'error' | 'info';
   } | null>(null);
-
-  const handleFavoriteClick = async () => {
-    if (!user) {
-      setNotification({
-        message: 'Please log in to add favorites',
-        severity: 'info',
-      });
-      return;
-    }
-
-    if (!onFavoriteToggle || isToggling) return;
-
-    setIsToggling(true);
-    try {
-      await onFavoriteToggle(book.id, !isFavorite);
-      setNotification({
-        message: isFavorite ? 'Removed from favorites' : 'Added to favorites',
-        severity: 'success',
-      });
-    } catch (error) {
-      setNotification({
-        message: 'Failed to update favorites',
-        severity: 'error',
-      });
-    } finally {
-      setIsToggling(false);
-    }
-  };
 
   const handleShareClick = (event: React.MouseEvent<HTMLElement>) => {
     setShareMenuAnchor(event.currentTarget);
@@ -134,15 +99,11 @@ export const BookActions: React.FC<BookActionsProps> = ({
   if (variant === 'compact') {
     return (
       <Box sx={{ display: 'flex', gap: 1 }}>
-        <Tooltip title={user ? (isFavorite ? 'Remove from favorites' : 'Add to favorites') : 'Login to add favorites'}>
-          <IconButton 
-            onClick={handleFavoriteClick} 
-            disabled={isToggling}
-            color={isFavorite ? 'error' : 'default'}
-          >
-            {isFavorite ? <Favorite /> : <FavoriteBorder />}
-          </IconButton>
-        </Tooltip>
+        <FavoriteButton
+          bookId={book.id}
+          variant="icon"
+          size="medium"
+        />
 
         <Tooltip title="Share book">
           <IconButton onClick={handleShareClick}>
@@ -197,17 +158,12 @@ export const BookActions: React.FC<BookActionsProps> = ({
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 3 }}>
       {/* Primary Actions */}
       <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
-        <Button
-          variant={isFavorite ? 'contained' : 'outlined'}
-          color={isFavorite ? 'error' : 'primary'}
-          startIcon={isFavorite ? <Favorite /> : <FavoriteBorder />}
-          onClick={handleFavoriteClick}
-          disabled={isToggling}
+        <FavoriteButton
+          bookId={book.id}
+          variant="button"
           size="large"
-          sx={{ minWidth: 140 }}
-        >
-          {showLabels ? (isFavorite ? 'Remove Favorite' : 'Add to Favorites') : ''}
-        </Button>
+          showLabel={showLabels}
+        />
 
         <Button
           variant="outlined"
