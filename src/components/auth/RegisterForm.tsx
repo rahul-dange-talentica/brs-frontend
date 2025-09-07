@@ -95,7 +95,7 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({ onSuccess }) => {
       </Divider>
 
       <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-        Password must contain at least 8 characters with uppercase, lowercase, and number.
+        Password must contain at least 8 characters with uppercase, lowercase, number, and special character (!@#$%^&* etc.).
       </Typography>
 
       <PasswordField

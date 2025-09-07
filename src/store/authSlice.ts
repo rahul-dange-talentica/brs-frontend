@@ -1,8 +1,12 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
-import { User, LoginRequest, RegisterRequest, AuthResponse, ApiError } from '../types';
+import { UserProfile, ApiError } from '../types';
+import { LoginRequest, RegisterRequest } from '@/types/api';
+import { authService } from '@/services';
+import { handleAPIError, getValidationErrors } from '@/utils/errorHandler';
+import { AxiosError } from 'axios';
 
 interface AuthState {
-  user: User | null;
+  user: UserProfile | null;
   isAuthenticated: boolean;
   loading: boolean;
   error: string | null;
@@ -19,93 +23,84 @@ const initialState: AuthState = {
 
 // Async thunks - these will be connected to actual API services in Task 05
 export const loginUser = createAsyncThunk<
-  AuthResponse,
+  { user: UserProfile; message: string },
   LoginRequest,
   { rejectValue: ApiError }
 >('auth/login', async (credentials, { rejectWithValue }) => {
   try {
-    // TODO: Replace with actual API call in Task 05
-    // const response = await authService.login(credentials);
+    const response = await authService.login(credentials);
     
-    // Mock implementation for now
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    if (credentials.email === 'test@example.com' && credentials.password === 'password') {
-      const mockUser: User = {
-        id: '1',
-        email: credentials.email,
-        firstName: 'John',
-        lastName: 'Doe',
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
-      
-      return { user: mockUser, message: 'Login successful' };
+    if (response.success && response.user) {
+      return { user: response.user, message: response.message };
     } else {
-      throw new Error('Invalid credentials');
+      throw new Error(response.message || 'Login failed');
     }
   } catch (error: any) {
+    if (error instanceof AxiosError) {
+      return rejectWithValue({
+        message: handleAPIError(error),
+        status: error.response?.status || 401,
+        errors: getValidationErrors(error),
+      });
+    }
     return rejectWithValue({
       message: error.message || 'Login failed',
-      status: error.status || 401,
+      status: 401,
     });
   }
 });
 
 export const registerUser = createAsyncThunk<
-  AuthResponse,
+  { user: UserProfile; message: string },
   RegisterRequest,
   { rejectValue: ApiError }
 >('auth/register', async (userData, { rejectWithValue }) => {
   try {
-    // TODO: Replace with actual API call in Task 05
-    // const response = await authService.register(userData);
+    const response = await authService.register(userData);
     
-    // Mock implementation for now
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    const mockUser: User = {
-      id: Date.now().toString(),
-      email: userData.email,
-      firstName: userData.firstName,
-      lastName: userData.lastName,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
-    
-    return { user: mockUser, message: 'Registration successful' };
+    if (response.success && response.user) {
+      return { user: response.user, message: response.message };
+    } else {
+      throw new Error(response.message || 'Registration failed');
+    }
   } catch (error: any) {
+    if (error instanceof AxiosError) {
+      return rejectWithValue({
+        message: handleAPIError(error),
+        status: error.response?.status || 400,
+        errors: getValidationErrors(error),
+      });
+    }
     return rejectWithValue({
       message: error.message || 'Registration failed',
-      status: error.status || 400,
+      status: 400,
     });
   }
 });
 
 export const verifyToken = createAsyncThunk<
-  AuthResponse,
+  { user: UserProfile; message: string },
   void,
   { rejectValue: ApiError }
 >('auth/verify', async (_, { rejectWithValue }) => {
   try {
-    // TODO: Replace with actual API call in Task 05
-    // const response = await authService.verifyToken();
+    const response = await authService.verifyToken();
     
-    // Mock implementation for now
-    await new Promise(resolve => setTimeout(resolve, 500));
-    
-    // Check if user is stored in localStorage (temporary solution)
-    const storedUser = localStorage.getItem('user');
-    if (storedUser) {
-      const user = JSON.parse(storedUser);
-      return { user, message: 'Token verified' };
+    if (response.success && response.user) {
+      return { user: response.user, message: response.message || 'Token verified' };
     } else {
       throw new Error('No valid token');
     }
   } catch (error: any) {
+    if (error instanceof AxiosError) {
+      return rejectWithValue({
+        message: handleAPIError(error),
+        status: error.response?.status || 401,
+      });
+    }
     return rejectWithValue({
       message: error.message || 'Token verification failed',
-      status: error.status || 401,
+      status: 401,
     });
   }
 });
@@ -116,16 +111,17 @@ export const logoutUser = createAsyncThunk<
   { rejectValue: ApiError }
 >('auth/logout', async (_, { rejectWithValue }) => {
   try {
-    // TODO: Replace with actual API call in Task 05
-    // await authService.logout();
-    
-    // Mock implementation for now
-    localStorage.removeItem('user');
-    await new Promise(resolve => setTimeout(resolve, 300));
+    await authService.logout();
   } catch (error: any) {
+    if (error instanceof AxiosError) {
+      return rejectWithValue({
+        message: handleAPIError(error),
+        status: error.response?.status || 400,
+      });
+    }
     return rejectWithValue({
       message: error.message || 'Logout failed',
-      status: error.status || 400,
+      status: 400,
     });
   }
 });
@@ -160,14 +156,12 @@ const authSlice = createSlice({
         state.isAuthenticated = true;
         state.error = null;
         state.isInitialized = true;
-        // Store user in localStorage (temporary solution)
-        localStorage.setItem('user', JSON.stringify(action.payload.user));
       })
       .addCase(loginUser.rejected, (state, action) => {
         state.loading = false;
         state.user = null;
         state.isAuthenticated = false;
-        state.error = action.payload?.message || 'Login failed';
+        state.error = action.payload?.message || action.error?.message || 'Login failed';
         state.isInitialized = true;
       })
       // Register cases
@@ -181,14 +175,12 @@ const authSlice = createSlice({
         state.isAuthenticated = true;
         state.error = null;
         state.isInitialized = true;
-        // Store user in localStorage (temporary solution)
-        localStorage.setItem('user', JSON.stringify(action.payload.user));
       })
       .addCase(registerUser.rejected, (state, action) => {
         state.loading = false;
         state.user = null;
         state.isAuthenticated = false;
-        state.error = action.payload?.message || 'Registration failed';
+        state.error = action.payload?.message || action.error?.message || 'Registration failed';
         state.isInitialized = true;
       })
       // Verify token cases
@@ -203,12 +195,15 @@ const authSlice = createSlice({
         state.error = null;
         state.isInitialized = true;
       })
-      .addCase(verifyToken.rejected, (state) => {
+      .addCase(verifyToken.rejected, (state, action) => {
         state.loading = false;
         state.user = null;
         state.isAuthenticated = false;
         state.error = null; // Don't show error for token verification failure
         state.isInitialized = true;
+        
+        // Log the verification failure for debugging
+        console.warn('Token verification failed:', action.payload?.message || 'Unknown error');
       })
       // Logout cases
       .addCase(logoutUser.pending, (state) => {
@@ -241,4 +236,5 @@ export const selectAuthLoading = (state: { auth: AuthState }) => state.auth.load
 export const selectAuthError = (state: { auth: AuthState }) => state.auth.error;
 export const selectIsAuthInitialized = (state: { auth: AuthState }) => state.auth.isInitialized;
 
-export default authSlice.reducer;
+const authReducer = authSlice.reducer;
+export default authReducer;

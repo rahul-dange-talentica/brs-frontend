@@ -1,5 +1,8 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
 import { Review, ApiError } from '../types';
+import { reviewsService, userService } from '@/services';
+import { handleAPIError, getValidationErrors } from '@/utils/errorHandler';
+import { AxiosError } from 'axios';
 
 interface ReviewsState {
   reviews: Review[];
@@ -33,39 +36,6 @@ const initialState: ReviewsState = {
   error: null,
 };
 
-// Mock data for development
-const mockReviews: Review[] = [
-  {
-    id: '1',
-    bookId: '1',
-    userId: '1',
-    rating: 5,
-    reviewText: 'An absolutely masterful piece of American literature. Fitzgerald\'s prose is elegant and the symbolism is profound.',
-    title: 'A Timeless Classic',
-    user: {
-      id: '1',
-      firstName: 'John',
-      lastName: 'Doe',
-    },
-    createdAt: '2024-01-15T10:30:00Z',
-    updatedAt: '2024-01-15T10:30:00Z',
-  },
-  {
-    id: '2',
-    bookId: '1',
-    userId: '2',
-    rating: 4,
-    reviewText: 'Great book with beautiful writing, though the pacing could be better in some parts.',
-    title: 'Well Written',
-    user: {
-      id: '2',
-      firstName: 'Jane',
-      lastName: 'Smith',
-    },
-    createdAt: '2024-01-16T14:20:00Z',
-    updatedAt: '2024-01-16T14:20:00Z',
-  },
-];
 
 // Async thunks
 export const createReview = createAsyncThunk<
@@ -74,35 +44,24 @@ export const createReview = createAsyncThunk<
   { rejectValue: ApiError }
 >('reviews/createReview', async (reviewData, { rejectWithValue }) => {
   try {
-    // TODO: Replace with actual API call in Task 05
-    // const response = await reviewsService.createReview(reviewData);
+    const response = await reviewsService.createReview(reviewData);
     
-    // Mock implementation
-    await new Promise(resolve => setTimeout(resolve, 500));
-    
-    const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
-    
-    const newReview: Review = {
-      id: Date.now().toString(),
-      bookId: reviewData.bookId,
-      userId: currentUser.id || '1',
-      rating: reviewData.rating,
-      reviewText: reviewData.reviewText,
-      title: reviewData.title,
-      user: {
-        id: currentUser.id || '1',
-        firstName: currentUser.firstName || 'Anonymous',
-        lastName: currentUser.lastName || 'User',
-      },
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
-    
-    return newReview;
+    if (response.success && response.review) {
+      return response.review;
+    } else {
+      throw new Error('Failed to create review');
+    }
   } catch (error: any) {
+    if (error instanceof AxiosError) {
+      return rejectWithValue({
+        message: handleAPIError(error),
+        status: error.response?.status || 400,
+        errors: getValidationErrors(error),
+      });
+    }
     return rejectWithValue({
       message: error.message || 'Failed to create review',
-      status: error.status || 400,
+      status: 400,
     });
   }
 });
@@ -113,28 +72,25 @@ export const updateReview = createAsyncThunk<
   { rejectValue: ApiError }
 >('reviews/updateReview', async (updateData, { rejectWithValue }) => {
   try {
-    // TODO: Replace with actual API call in Task 05
-    // const response = await reviewsService.updateReview(updateData.reviewId, updateData);
+    const { reviewId, ...updateFields } = updateData;
+    const response = await reviewsService.updateReview(reviewId, updateFields);
     
-    // Mock implementation
-    await new Promise(resolve => setTimeout(resolve, 400));
-    
-    const existingReview = mockReviews.find(r => r.id === updateData.reviewId);
-    if (!existingReview) {
-      throw new Error('Review not found');
+    if (response.success && response.review) {
+      return response.review;
+    } else {
+      throw new Error('Failed to update review');
     }
-    
-    const updatedReview: Review = {
-      ...existingReview,
-      ...updateData,
-      updatedAt: new Date().toISOString(),
-    };
-    
-    return updatedReview;
   } catch (error: any) {
+    if (error instanceof AxiosError) {
+      return rejectWithValue({
+        message: handleAPIError(error),
+        status: error.response?.status || 400,
+        errors: getValidationErrors(error),
+      });
+    }
     return rejectWithValue({
       message: error.message || 'Failed to update review',
-      status: error.status || 400,
+      status: 400,
     });
   }
 });
@@ -145,17 +101,23 @@ export const deleteReview = createAsyncThunk<
   { rejectValue: ApiError }
 >('reviews/deleteReview', async (reviewId, { rejectWithValue }) => {
   try {
-    // TODO: Replace with actual API call in Task 05
-    // await reviewsService.deleteReview(reviewId);
+    const response = await reviewsService.deleteReview(reviewId);
     
-    // Mock implementation
-    await new Promise(resolve => setTimeout(resolve, 300));
-    
-    return reviewId;
+    if (response.success) {
+      return reviewId;
+    } else {
+      throw new Error(response.message || 'Failed to delete review');
+    }
   } catch (error: any) {
+    if (error instanceof AxiosError) {
+      return rejectWithValue({
+        message: handleAPIError(error),
+        status: error.response?.status || 400,
+      });
+    }
     return rejectWithValue({
       message: error.message || 'Failed to delete review',
-      status: error.status || 400,
+      status: 400,
     });
   }
 });
@@ -166,46 +128,60 @@ export const fetchBookReviews = createAsyncThunk<
   { rejectValue: ApiError }
 >('reviews/fetchBookReviews', async ({ bookId, page = 1, pageSize = 10 }, { rejectWithValue }) => {
   try {
-    // TODO: Replace with actual API call in Task 05
-    // const response = await reviewsService.getBookReviews(bookId, { page, pageSize });
+    const response = await reviewsService.getReviewsForBook(bookId, {
+      page,
+      limit: pageSize,
+      sortBy: 'createdAt',
+      sortOrder: 'desc',
+    });
     
-    // Mock implementation
-    await new Promise(resolve => setTimeout(resolve, 600));
-    
-    const bookReviews = mockReviews.filter(review => review.bookId === bookId);
-    const startIndex = (page - 1) * pageSize;
-    const endIndex = startIndex + pageSize;
-    
-    return bookReviews.slice(startIndex, endIndex);
+    if (response.success) {
+      return response.reviews;
+    } else {
+      throw new Error('Failed to fetch book reviews');
+    }
   } catch (error: any) {
+    if (error instanceof AxiosError) {
+      return rejectWithValue({
+        message: handleAPIError(error),
+        status: error.response?.status || 500,
+      });
+    }
     return rejectWithValue({
       message: error.message || 'Failed to fetch book reviews',
-      status: error.status || 500,
+      status: 500,
     });
   }
 });
 
 export const fetchUserReviews = createAsyncThunk<
   Review[],
-  { userId: string; page?: number; pageSize?: number },
+  { page?: number; pageSize?: number },
   { rejectValue: ApiError }
->('reviews/fetchUserReviews', async ({ userId, page = 1, pageSize = 10 }, { rejectWithValue }) => {
+>('reviews/fetchUserReviews', async ({ page = 1, pageSize = 10 }, { rejectWithValue }) => {
   try {
-    // TODO: Replace with actual API call in Task 05
-    // const response = await reviewsService.getUserReviews(userId, { page, pageSize });
+    const response = await userService.getUserReviews(page, pageSize);
     
-    // Mock implementation
-    await new Promise(resolve => setTimeout(resolve, 500));
-    
-    const userReviews = mockReviews.filter(review => review.userId === userId);
-    const startIndex = (page - 1) * pageSize;
-    const endIndex = startIndex + pageSize;
-    
-    return userReviews.slice(startIndex, endIndex);
+    if (response.success) {
+      // Extract reviews from the response (they include book information)
+      return response.reviews.map(reviewWithBook => ({
+        ...reviewWithBook,
+        // Remove book information from review object to match Review interface
+        book: undefined,
+      }));
+    } else {
+      throw new Error('Failed to fetch user reviews');
+    }
   } catch (error: any) {
+    if (error instanceof AxiosError) {
+      return rejectWithValue({
+        message: handleAPIError(error),
+        status: error.response?.status || 500,
+      });
+    }
     return rejectWithValue({
       message: error.message || 'Failed to fetch user reviews',
-      status: error.status || 500,
+      status: 500,
     });
   }
 });
@@ -216,19 +192,28 @@ export const fetchAllReviews = createAsyncThunk<
   { rejectValue: ApiError }
 >('reviews/fetchAllReviews', async ({ page = 1, pageSize = 20 }, { rejectWithValue }) => {
   try {
-    // TODO: Replace with actual API call in Task 05
+    // This would require a different endpoint to get all reviews across all books
+    // For now, we'll fetch recent reviews from user service as a placeholder
+    const response = await userService.getUserReviews(page, pageSize);
     
-    // Mock implementation
-    await new Promise(resolve => setTimeout(resolve, 400));
-    
-    const startIndex = (page - 1) * pageSize;
-    const endIndex = startIndex + pageSize;
-    
-    return mockReviews.slice(startIndex, endIndex);
+    if (response.success) {
+      return response.reviews.map(reviewWithBook => ({
+        ...reviewWithBook,
+        book: undefined, // Remove book info to match Review interface
+      }));
+    } else {
+      throw new Error('Failed to fetch reviews');
+    }
   } catch (error: any) {
+    if (error instanceof AxiosError) {
+      return rejectWithValue({
+        message: handleAPIError(error),
+        status: error.response?.status || 500,
+      });
+    }
     return rejectWithValue({
       message: error.message || 'Failed to fetch reviews',
-      status: error.status || 500,
+      status: 500,
     });
   }
 });
@@ -398,4 +383,5 @@ export const selectReviewById = (reviewId: string) => (state: { reviews: Reviews
          state.reviews.currentBookReviews.find(review => review.id === reviewId);
 };
 
-export default reviewsSlice.reducer;
+const reviewsReducer = reviewsSlice.reducer;
+export default reviewsReducer;

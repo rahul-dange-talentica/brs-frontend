@@ -1,16 +1,6 @@
 import { User } from './common';
 
-export interface LoginRequest {
-  email: string;
-  password: string;
-}
-
-export interface RegisterRequest {
-  email: string;
-  password: string;
-  firstName: string;
-  lastName: string;
-}
+// Auth types moved to api.ts to avoid duplication
 
 export interface AuthResponse {
   user: User;

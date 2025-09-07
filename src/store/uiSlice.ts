@@ -254,4 +254,5 @@ export const selectCurrentTheme = (state: { ui: UIState }) => {
   return state.ui.theme;
 };
 
-export default uiSlice.reducer;
+const uiReducer = uiSlice.reducer;
+export default uiReducer;

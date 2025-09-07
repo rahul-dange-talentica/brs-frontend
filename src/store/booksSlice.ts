@@ -1,5 +1,8 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
 import { Book, PaginationState, SearchFilters, ApiError } from '../types';
+import { booksService } from '@/services';
+import { handleAPIError } from '@/utils/errorHandler';
+import { AxiosError } from 'axios';
 
 interface BooksState {
   books: Book[];
@@ -33,37 +36,6 @@ const initialState: BooksState = {
   featuredBooks: [],
 };
 
-// Mock data for development
-const mockBooks: Book[] = [
-  {
-    id: '1',
-    title: 'The Great Gatsby',
-    author: 'F. Scott Fitzgerald',
-    genre: 'Fiction',
-    description: 'A classic American novel set in the Jazz Age.',
-    coverImage: 'https://covers.openlibrary.org/b/id/8225261-L.jpg',
-    averageRating: 4.2,
-    totalReviews: 156,
-    isbn: '9780743273565',
-    publishedDate: '1925-04-10',
-    createdAt: '2024-01-01T00:00:00Z',
-    updatedAt: '2024-01-01T00:00:00Z',
-  },
-  {
-    id: '2',
-    title: 'To Kill a Mockingbird',
-    author: 'Harper Lee',
-    genre: 'Fiction',
-    description: 'A story of racial injustice and childhood innocence.',
-    coverImage: 'https://covers.openlibrary.org/b/id/8225261-L.jpg',
-    averageRating: 4.5,
-    totalReviews: 203,
-    isbn: '9780446310789',
-    publishedDate: '1960-07-11',
-    createdAt: '2024-01-01T00:00:00Z',
-    updatedAt: '2024-01-01T00:00:00Z',
-  },
-];
 
 // Async thunks
 export const fetchBooks = createAsyncThunk<
@@ -72,28 +44,34 @@ export const fetchBooks = createAsyncThunk<
   { rejectValue: ApiError }
 >('books/fetchBooks', async ({ page = 1, pageSize = 10 }, { rejectWithValue }) => {
   try {
-    // TODO: Replace with actual API call in Task 05
-    // const response = await booksService.getBooks({ page, pageSize });
+    const response = await booksService.getAllBooks({
+      page,
+      limit: pageSize,
+    });
     
-    // Mock implementation
-    await new Promise(resolve => setTimeout(resolve, 800));
-    
-    const startIndex = (page - 1) * pageSize;
-    const endIndex = startIndex + pageSize;
-    const paginatedBooks = mockBooks.slice(startIndex, endIndex);
-    
-    const pagination: PaginationState = {
-      currentPage: page,
-      totalPages: Math.ceil(mockBooks.length / pageSize),
-      totalBooks: mockBooks.length,
-      pageSize,
-    };
-    
-    return { books: paginatedBooks, pagination };
+    if (response.success) {
+      return {
+        books: response.books,
+        pagination: {
+          currentPage: response.pagination.currentPage,
+          totalPages: response.pagination.totalPages,
+          totalBooks: response.pagination.totalBooks,
+          pageSize: response.pagination.pageSize,
+        },
+      };
+    } else {
+      throw new Error('Failed to fetch books');
+    }
   } catch (error: any) {
+    if (error instanceof AxiosError) {
+      return rejectWithValue({
+        message: handleAPIError(error),
+        status: error.response?.status || 500,
+      });
+    }
     return rejectWithValue({
       message: error.message || 'Failed to fetch books',
-      status: error.status || 500,
+      status: 500,
     });
   }
 });
@@ -104,69 +82,39 @@ export const searchBooks = createAsyncThunk<
   { rejectValue: ApiError }
 >('books/searchBooks', async (filters, { rejectWithValue }) => {
   try {
-    // TODO: Replace with actual API call in Task 05
-    // const response = await booksService.searchBooks(filters);
-    
-    // Mock implementation with filtering
-    await new Promise(resolve => setTimeout(resolve, 600));
-    
-    let filteredBooks = mockBooks;
-    
-    if (filters.query) {
-      const query = filters.query.toLowerCase();
-      filteredBooks = filteredBooks.filter(book => 
-        book.title.toLowerCase().includes(query) ||
-        book.author.toLowerCase().includes(query) ||
-        book.genre.toLowerCase().includes(query)
-      );
-    }
-    
-    if (filters.genre) {
-      filteredBooks = filteredBooks.filter(book => 
-        book.genre.toLowerCase() === filters.genre!.toLowerCase()
-      );
-    }
-    
-    if (filters.author) {
-      filteredBooks = filteredBooks.filter(book => 
-        book.author.toLowerCase().includes(filters.author!.toLowerCase())
-      );
-    }
-    
-    if (filters.minRating) {
-      filteredBooks = filteredBooks.filter(book => book.averageRating >= filters.minRating!);
-    }
-    
-    // Sort books
-    if (filters.sortBy) {
-      filteredBooks.sort((a, b) => {
-        let aValue: any = a[filters.sortBy as keyof Book];
-        let bValue: any = b[filters.sortBy as keyof Book];
-        
-        if (typeof aValue === 'string') {
-          aValue = aValue.toLowerCase();
-          bValue = bValue.toLowerCase();
-        }
-        
-        if (filters.sortOrder === 'desc') {
-          return aValue < bValue ? 1 : -1;
-        }
-        return aValue > bValue ? 1 : -1;
-      });
-    }
-    
-    const pagination: PaginationState = {
-      currentPage: 1,
-      totalPages: Math.ceil(filteredBooks.length / 10),
-      totalBooks: filteredBooks.length,
-      pageSize: 10,
+    const searchQuery = {
+      q: filters.query || '',
+      genre: filters.genre,
+      author: filters.author,
+      page: 1,
+      limit: 20,
     };
     
-    return { books: filteredBooks, pagination };
+    const response = await booksService.searchBooks(searchQuery);
+    
+    if (response.success) {
+      return {
+        books: response.books,
+        pagination: {
+          currentPage: response.pagination.currentPage,
+          totalPages: response.pagination.totalPages,
+          totalBooks: response.totalResults,
+          pageSize: response.pagination.pageSize,
+        },
+      };
+    } else {
+      throw new Error('Search failed');
+    }
   } catch (error: any) {
+    if (error instanceof AxiosError) {
+      return rejectWithValue({
+        message: handleAPIError(error),
+        status: error.response?.status || 500,
+      });
+    }
     return rejectWithValue({
       message: error.message || 'Search failed',
-      status: error.status || 500,
+      status: 500,
     });
   }
 });
@@ -177,44 +125,50 @@ export const fetchBookById = createAsyncThunk<
   { rejectValue: ApiError }
 >('books/fetchBookById', async (bookId, { rejectWithValue }) => {
   try {
-    // TODO: Replace with actual API call in Task 05
-    // const response = await booksService.getBookById(bookId);
+    const response = await booksService.getBookById(bookId);
     
-    // Mock implementation
-    await new Promise(resolve => setTimeout(resolve, 400));
-    
-    const book = mockBooks.find(b => b.id === bookId);
-    if (!book) {
+    if (response.success && response.book) {
+      return response.book;
+    } else {
       throw new Error('Book not found');
     }
-    
-    return book;
   } catch (error: any) {
+    if (error instanceof AxiosError) {
+      return rejectWithValue({
+        message: handleAPIError(error),
+        status: error.response?.status || 404,
+      });
+    }
     return rejectWithValue({
       message: error.message || 'Failed to fetch book',
-      status: error.status || 404,
+      status: 404,
     });
   }
 });
 
 export const fetchRecommendations = createAsyncThunk<
   Book[],
-  { userId?: string; bookId?: string; type?: 'popular' | 'genre' | 'personalized' },
+  { type?: 'popular' | 'genre-based' | 'personalized'; limit?: number },
   { rejectValue: ApiError }
->('books/fetchRecommendations', async (_, { rejectWithValue }) => {
+>('books/fetchRecommendations', async ({ type = 'popular', limit = 10 }, { rejectWithValue }) => {
   try {
-    // TODO: Replace with actual API call in Task 05
-    // const response = await booksService.getRecommendations(params);
+    const response = await booksService.getRecommendations(type, limit);
     
-    // Mock implementation
-    await new Promise(resolve => setTimeout(resolve, 500));
-    
-    // Return a subset of mock books as recommendations
-    return mockBooks.slice(0, 5);
+    if (response.success) {
+      return response.books;
+    } else {
+      throw new Error('Failed to fetch recommendations');
+    }
   } catch (error: any) {
+    if (error instanceof AxiosError) {
+      return rejectWithValue({
+        message: handleAPIError(error),
+        status: error.response?.status || 500,
+      });
+    }
     return rejectWithValue({
       message: error.message || 'Failed to fetch recommendations',
-      status: error.status || 500,
+      status: 500,
     });
   }
 });
@@ -225,16 +179,24 @@ export const fetchFeaturedBooks = createAsyncThunk<
   { rejectValue: ApiError }
 >('books/fetchFeaturedBooks', async (_, { rejectWithValue }) => {
   try {
-    // TODO: Replace with actual API call in Task 05
+    // Use popular recommendations as featured books
+    const response = await booksService.getPopularBooks(6);
     
-    // Mock implementation
-    await new Promise(resolve => setTimeout(resolve, 300));
-    
-    return mockBooks.slice(0, 3);
+    if (response.success) {
+      return response.books;
+    } else {
+      throw new Error('Failed to fetch featured books');
+    }
   } catch (error: any) {
+    if (error instanceof AxiosError) {
+      return rejectWithValue({
+        message: handleAPIError(error),
+        status: error.response?.status || 500,
+      });
+    }
     return rejectWithValue({
       message: error.message || 'Failed to fetch featured books',
-      status: error.status || 500,
+      status: 500,
     });
   }
 });
@@ -256,34 +218,41 @@ const booksSlice = createSlice({
     clearError: (state) => {
       state.error = null;
     },
-    updateBookRating: (state, action: PayloadAction<{ bookId: string; newRating: number; totalReviews: number }>) => {
-      const { bookId, newRating, totalReviews } = action.payload;
+    updateBookRating: (state, action: PayloadAction<{ bookId: string; averageRating: number; totalReviews: number }>) => {
+      const { bookId, averageRating, totalReviews } = action.payload;
       
       // Update in books array
       const bookIndex = state.books.findIndex(book => book.id === bookId);
       if (bookIndex !== -1) {
-        state.books[bookIndex].averageRating = newRating;
+        state.books[bookIndex].averageRating = averageRating;
         state.books[bookIndex].totalReviews = totalReviews;
       }
       
       // Update in search results
       const searchIndex = state.searchResults.findIndex(book => book.id === bookId);
       if (searchIndex !== -1) {
-        state.searchResults[searchIndex].averageRating = newRating;
+        state.searchResults[searchIndex].averageRating = averageRating;
         state.searchResults[searchIndex].totalReviews = totalReviews;
       }
       
       // Update current book
       if (state.currentBook && state.currentBook.id === bookId) {
-        state.currentBook.averageRating = newRating;
+        state.currentBook.averageRating = averageRating;
         state.currentBook.totalReviews = totalReviews;
       }
       
       // Update recommendations
       const recIndex = state.recommendations.findIndex(book => book.id === bookId);
       if (recIndex !== -1) {
-        state.recommendations[recIndex].averageRating = newRating;
+        state.recommendations[recIndex].averageRating = averageRating;
         state.recommendations[recIndex].totalReviews = totalReviews;
+      }
+      
+      // Update featured books
+      const featuredIndex = state.featuredBooks.findIndex(book => book.id === bookId);
+      if (featuredIndex !== -1) {
+        state.featuredBooks[featuredIndex].averageRating = averageRating;
+        state.featuredBooks[featuredIndex].totalReviews = totalReviews;
       }
     },
   },
@@ -381,4 +350,5 @@ export const selectBooksPagination = (state: { books: BooksState }) => state.boo
 export const selectSearchFilters = (state: { books: BooksState }) => state.books.searchFilters;
 export const selectFeaturedBooks = (state: { books: BooksState }) => state.books.featuredBooks;
 
-export default booksSlice.reducer;
+const booksReducer = booksSlice.reducer;
+export default booksReducer;

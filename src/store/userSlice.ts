@@ -1,5 +1,8 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
 import { UserProfile, Book, ApiError } from '../types';
+import { userService } from '@/services';
+import { handleAPIError, getValidationErrors } from '@/utils/errorHandler';
+import { AxiosError } from 'axios';
 
 interface UserState {
   profile: UserProfile | null;
@@ -47,38 +50,31 @@ const initialState: UserState = {
   },
 };
 
-// Mock data for development
-const mockUserProfile: UserProfile = {
-  id: '1',
-  email: 'john.doe@example.com',
-  firstName: 'John',
-  lastName: 'Doe',
-  bio: 'Avid reader and literature enthusiast. Love exploring different genres and discovering new authors.',
-  favoriteGenres: ['Fiction', 'Science Fiction', 'Mystery'],
-  totalReviews: 15,
-  averageRating: 4.2,
-  createdAt: '2024-01-01T00:00:00Z',
-  updatedAt: '2024-01-15T10:30:00Z',
-};
 
 // Async thunks
 export const fetchUserProfile = createAsyncThunk<
   UserProfile,
-  string,
+  void,
   { rejectValue: ApiError }
->('user/fetchProfile', async (userId, { rejectWithValue }) => {
+>('user/fetchProfile', async (_, { rejectWithValue }) => {
   try {
-    // TODO: Replace with actual API call in Task 05
-    // const response = await userService.getProfile(userId);
+    const response = await userService.getProfile();
     
-    // Mock implementation
-    await new Promise(resolve => setTimeout(resolve, 500));
-    
-    return { ...mockUserProfile, id: userId };
+    if (response.success && response.user) {
+      return response.user;
+    } else {
+      throw new Error('Failed to fetch user profile');
+    }
   } catch (error: any) {
+    if (error instanceof AxiosError) {
+      return rejectWithValue({
+        message: handleAPIError(error),
+        status: error.response?.status || 500,
+      });
+    }
     return rejectWithValue({
       message: error.message || 'Failed to fetch user profile',
-      status: error.status || 500,
+      status: 500,
     });
   }
 });
@@ -89,120 +85,105 @@ export const updateUserProfile = createAsyncThunk<
   { rejectValue: ApiError }
 >('user/updateProfile', async (updateData, { rejectWithValue }) => {
   try {
-    // TODO: Replace with actual API call in Task 05
-    // const response = await userService.updateProfile(updateData);
+    const response = await userService.updateProfile(updateData);
     
-    // Mock implementation
-    await new Promise(resolve => setTimeout(resolve, 700));
-    
-    const updatedProfile: UserProfile = {
-      ...mockUserProfile,
-      ...updateData,
-      updatedAt: new Date().toISOString(),
-    };
-    
-    return updatedProfile;
+    if (response.success && response.user) {
+      return response.user;
+    } else {
+      throw new Error(response.message || 'Failed to update profile');
+    }
   } catch (error: any) {
+    if (error instanceof AxiosError) {
+      return rejectWithValue({
+        message: handleAPIError(error),
+        status: error.response?.status || 400,
+        errors: getValidationErrors(error),
+      });
+    }
     return rejectWithValue({
       message: error.message || 'Failed to update profile',
-      status: error.status || 400,
+      status: 400,
     });
   }
 });
 
 export const fetchFavoriteBooks = createAsyncThunk<
   Book[],
-  string,
+  { page?: number; limit?: number },
   { rejectValue: ApiError }
->('user/fetchFavoriteBooks', async (_, { rejectWithValue }) => {
+>('user/fetchFavoriteBooks', async ({ page = 1, limit = 20 }, { rejectWithValue }) => {
   try {
-    // TODO: Replace with actual API call in Task 05
-    // const response = await userService.getFavoriteBooks(userId);
+    const response = await userService.getFavorites(page, limit);
     
-    // Mock implementation
-    await new Promise(resolve => setTimeout(resolve, 600));
-    
-    // Return mock favorite books
-    const mockFavorites: Book[] = [
-      {
-        id: '1',
-        title: 'The Great Gatsby',
-        author: 'F. Scott Fitzgerald',
-        genre: 'Fiction',
-        description: 'A classic American novel set in the Jazz Age.',
-        coverImage: 'https://covers.openlibrary.org/b/id/8225261-L.jpg',
-        averageRating: 4.2,
-        totalReviews: 156,
-        isbn: '9780743273565',
-        publishedDate: '1925-04-10',
-        createdAt: '2024-01-01T00:00:00Z',
-        updatedAt: '2024-01-01T00:00:00Z',
-      },
-    ];
-    
-    return mockFavorites;
+    if (response.success) {
+      return response.books;
+    } else {
+      throw new Error('Failed to fetch favorite books');
+    }
   } catch (error: any) {
+    if (error instanceof AxiosError) {
+      return rejectWithValue({
+        message: handleAPIError(error),
+        status: error.response?.status || 500,
+      });
+    }
     return rejectWithValue({
       message: error.message || 'Failed to fetch favorite books',
-      status: error.status || 500,
+      status: 500,
     });
   }
 });
 
 export const addToFavorites = createAsyncThunk<
-  Book,
-  { userId: string; bookId: string },
+  string,
+  string,
   { rejectValue: ApiError }
->('user/addToFavorites', async ({ bookId }, { rejectWithValue }) => {
+>('user/addToFavorites', async (bookId, { rejectWithValue }) => {
   try {
-    // TODO: Replace with actual API call in Task 05
-    // const response = await userService.addToFavorites(userId, bookId);
+    const response = await userService.addToFavorites(bookId);
     
-    // Mock implementation
-    await new Promise(resolve => setTimeout(resolve, 400));
-    
-    // Mock book data
-    const mockBook: Book = {
-      id: bookId,
-      title: 'Sample Book',
-      author: 'Sample Author',
-      genre: 'Fiction',
-      description: 'A sample book description.',
-      coverImage: 'https://covers.openlibrary.org/b/id/8225261-L.jpg',
-      averageRating: 4.0,
-      totalReviews: 100,
-      isbn: '9780000000000',
-      publishedDate: '2024-01-01',
-      createdAt: '2024-01-01T00:00:00Z',
-      updatedAt: '2024-01-01T00:00:00Z',
-    };
-    
-    return mockBook;
+    if (response.success) {
+      return bookId;
+    } else {
+      throw new Error(response.message || 'Failed to add to favorites');
+    }
   } catch (error: any) {
+    if (error instanceof AxiosError) {
+      return rejectWithValue({
+        message: handleAPIError(error),
+        status: error.response?.status || 400,
+      });
+    }
     return rejectWithValue({
       message: error.message || 'Failed to add to favorites',
-      status: error.status || 400,
+      status: 400,
     });
   }
 });
 
 export const removeFromFavorites = createAsyncThunk<
   string,
-  { userId: string; bookId: string },
+  string,
   { rejectValue: ApiError }
->('user/removeFromFavorites', async ({ bookId }, { rejectWithValue }) => {
+>('user/removeFromFavorites', async (bookId, { rejectWithValue }) => {
   try {
-    // TODO: Replace with actual API call in Task 05
-    // await userService.removeFromFavorites(userId, bookId);
+    const response = await userService.removeFromFavorites(bookId);
     
-    // Mock implementation
-    await new Promise(resolve => setTimeout(resolve, 300));
-    
-    return bookId;
+    if (response.success) {
+      return bookId;
+    } else {
+      throw new Error(response.message || 'Failed to remove from favorites');
+    }
   } catch (error: any) {
+    if (error instanceof AxiosError) {
+      return rejectWithValue({
+        message: handleAPIError(error),
+        status: error.response?.status || 400,
+      });
+    }
     return rejectWithValue({
       message: error.message || 'Failed to remove from favorites',
-      status: error.status || 400,
+      status: 400,
     });
   }
 });
@@ -383,10 +364,9 @@ const userSlice = createSlice({
         state.error = action.payload?.message || 'Failed to fetch favorite books';
       })
       // Add to favorites cases
-      .addCase(addToFavorites.fulfilled, (state, action) => {
-        if (!state.favoriteBooks.find(book => book.id === action.payload.id)) {
-          state.favoriteBooks.push(action.payload);
-        }
+      .addCase(addToFavorites.fulfilled, (_state, _action) => {
+        // Re-fetch favorites after successful addition
+        // Note: This will trigger a separate fetchFavoriteBooks call
       })
       .addCase(addToFavorites.rejected, (state, action) => {
         state.error = action.payload?.message || 'Failed to add to favorites';
@@ -465,4 +445,5 @@ export const selectIsBookInReadingList = (bookId: string) => (state: { user: Use
   return state.user.readingList.some(book => book.id === bookId);
 };
 
-export default userSlice.reducer;
+const userReducer = userSlice.reducer;
+export default userReducer;
