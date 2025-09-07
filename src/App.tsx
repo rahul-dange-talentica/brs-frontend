@@ -17,6 +17,7 @@ import {
   People as PeopleIcon,
 } from '@mui/icons-material';
 import { MainLayout, AuthLayout, Section, Breadcrumbs } from './components/common';
+import ReduxTest from './components/common/ReduxTest';
 import { User } from './types/common';
 
 // Mock user data for demonstration
@@ -199,6 +200,8 @@ const HomePage: React.FC<{ isAuthenticated: boolean }> = ({ isAuthenticated }) =
             </Grid>
           ))}
         </Grid>
+
+        <ReduxTest />
 
         <Box sx={{ textAlign: 'center' }}>
           <Typography variant="h5" gutterBottom>
