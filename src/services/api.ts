@@ -27,7 +27,14 @@ apiClient.interceptors.request.use(
       console.log(`🚀 API Request: ${config.method?.toUpperCase()} ${config.url}`, {
         params: config.params,
         data: config.data,
+        headers: config.headers,
       });
+    }
+    
+    // Add Authorization header if token exists in localStorage
+    const token = localStorage.getItem('authToken');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
     }
     
     // Add timestamp to requests to prevent caching issues

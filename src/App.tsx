@@ -15,48 +15,32 @@ import {
   RegisterPage, 
   HomePage as HomePageComponent, 
   BooksPage as BooksPageComponent, 
-  BookDetailsPage 
+  BookDetailsPage,
+  UserReviewsPage 
 } from './pages';
 import { useAuth } from './hooks';
 import { useAppDispatch } from './store/hooks';
 import { setInitialized } from './store/authSlice';
 
 function App() {
-  const { isInitialized, isAuthenticated, verify, loading, error } = useAuth();
+  const { isInitialized, isAuthenticated, loading, error } = useAuth();
   const dispatch = useAppDispatch();
   
   useEffect(() => {
     console.log('App mounted - isInitialized:', isInitialized, 'loading:', loading);
+    // Auth initialization is now handled by initializeApp() in main.tsx
+    // No need for duplicate auth verification here
     
-    // Initialize auth state on app load
-    if (!isInitialized) {
-      console.log('Starting authentication initialization...');
-      
-      // In development mode, skip API verification and proceed directly
-      if (import.meta.env.DEV) {
-        console.log('DEV MODE: Skipping authentication verification, proceeding with app...');
+    // Fallback: Force initialization after 5 seconds if still not initialized
+    const fallbackTimeout = setTimeout(() => {
+      if (!isInitialized) {
+        console.warn('⚠️ App initialization timeout - forcing initialization');
         dispatch(setInitialized());
-        return;
       }
-      
-      // Force initialization after timeout in production
-      const timeoutId = setTimeout(() => {
-        console.warn('Auth verification timeout - forcing initialization');
-        dispatch(setInitialized());
-      }, 2000); // 2 second timeout
-      
-      verify()
-        .then(() => {
-          console.log('Auth verification completed successfully');
-          clearTimeout(timeoutId);
-        })
-        .catch((err) => {
-          console.error('Auth verification failed:', err);
-          clearTimeout(timeoutId);
-          dispatch(setInitialized()); // Force initialization even on error
-        });
-    }
-  }, [isInitialized, verify, dispatch, loading]);
+    }, 5000);
+
+    return () => clearTimeout(fallbackTimeout);
+  }, [isInitialized, loading, dispatch]);
   
   // Show loading until auth is initialized
   if (!isInitialized) {
@@ -128,7 +112,7 @@ function App() {
           element={
             <ProtectedRoute requireAuth={true}>
               <MainLayout>
-                <MyReviewsPage />
+                <UserReviewsPage />
               </MainLayout>
             </ProtectedRoute>
           } 
@@ -198,14 +182,6 @@ function App() {
 
 // Placeholder page components (keeping for future use)
 
-const MyReviewsPage = () => (
-  <Box>
-    <Breadcrumbs />
-    <Section title="My Reviews" subtitle="Manage and view all your book reviews">
-      <Typography>Review system will be implemented in Task 07.</Typography>
-    </Section>
-  </Box>
-);
 
 const FavoritesPage = () => (
   <Box>

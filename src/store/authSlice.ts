@@ -84,6 +84,11 @@ export const verifyToken = createAsyncThunk<
   { rejectValue: ApiError }
 >('auth/verify', async (_, { rejectWithValue }) => {
   try {
+    // Check if token exists first
+    if (!authService.hasToken()) {
+      throw new Error('No authentication token found');
+    }
+
     const response = await authService.verifyToken();
     
     if (response.success && response.user) {
@@ -92,6 +97,9 @@ export const verifyToken = createAsyncThunk<
       throw new Error('No valid token');
     }
   } catch (error: any) {
+    // Clear invalid token
+    localStorage.removeItem('authToken');
+    
     if (error instanceof AxiosError) {
       return rejectWithValue({
         message: handleAPIError(error),

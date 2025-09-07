@@ -117,8 +117,8 @@ export const userService = {
   ): Promise<UserReviewsResponse> => {
     return retryRequest(async () => {
       const response = await apiClient.get<UserReviewsResponse>(
-        '/users/reviews',
-        { params: { page, limit } }
+        API_CONFIG.ENDPOINTS.USERS.REVIEWS,
+        { params: { skip: (page - 1) * limit, limit } }
       );
       return response.data;
     });

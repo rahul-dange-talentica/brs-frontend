@@ -54,22 +54,7 @@ export interface BookDisplay {
   recentReviews?: ReviewSummary[];
 }
 
-export interface Review {
-  id: string;
-  bookId: string;
-  userId: string;
-  rating: number;
-  reviewText: string;
-  title?: string;
-  user: {
-    id: string;
-    firstName: string;
-    lastName: string;
-    avatar?: string;
-  };
-  createdAt: string;
-  updatedAt: string;
-}
+// Moved Review interface to Reviews API Types section above
 
 export interface UserProfile {
   id: string;
@@ -218,58 +203,123 @@ export interface RecommendationsResponse {
   user_id?: string; // For personal recommendations
 }
 
-// Reviews API Types
+// Reviews API Types (matching OpenAPI spec)
 export interface CreateReviewRequest {
-  bookId: string;
   rating: number;
-  reviewText: string;
-  title?: string;
+  review_text?: string;
 }
 
 export interface UpdateReviewRequest {
   rating?: number;
-  reviewText?: string;
-  title?: string;
+  review_text?: string;
 }
 
-export interface ReviewResponse {
-  success: boolean;
-  review: Review;
-  updatedBookRating?: {
-    averageRating: number;
-    totalReviews: number;
+// Backend review response from OpenAPI spec
+export interface ReviewFromAPI {
+  id: string;
+  user_id: string;
+  book_id: string;
+  rating: number;
+  review_text: string | null;
+  created_at: string;
+  updated_at: string;
+  user_name?: string; // Included in book reviews
+}
+
+// Frontend-friendly review interface
+export interface Review {
+  id: string;
+  bookId: string;
+  userId: string;
+  rating: number;
+  reviewText: string | null;
+  createdAt: string;
+  updatedAt: string;
+  user: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    name?: string; // Combined name from backend
   };
+  isOwn?: boolean; // Calculated on frontend
+}
+
+// Review response types from API
+export interface ReviewSummaryAPI {
+  id: string;
+  user_id: string;
+  book_id: string;
+  rating: number;
+  review_text: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ReviewListResponse {
+  reviews: ReviewFromAPI[];
+  total: number;
+  skip: number;
+  limit: number;
+  pages: number;
+  book_id: string;
+}
+
+export interface ReviewDetailResponse {
+  rating: number;
+  review_text: string | null;
+  id: string;
+  user_id: string;
+  book_id: string;
+  created_at: string;
+  updated_at: string;
+  user?: {
+    email: string;
+    first_name: string | null;
+    last_name: string | null;
+    id: string;
+    is_active: boolean;
+    created_at: string;
+    updated_at: string;
+  } | null;
+  book?: {
+    title: string;
+    author: string;
+    isbn: string | null;
+    description: string | null;
+    cover_image_url: string | null;
+    publication_date: string | null;
+    id: string;
+    average_rating: string;
+    total_reviews: number;
+    created_at: string;
+    updated_at: string;
+  } | null;
 }
 
 export interface ReviewsQuery {
-  page?: number;
+  skip?: number;
   limit?: number;
-  sortBy?: 'rating' | 'createdAt' | 'helpful';
-  sortOrder?: 'asc' | 'desc';
-}
-
-export interface ReviewsResponse {
-  success: boolean;
-  reviews: Review[];
-  pagination: {
-    currentPage: number;
-    totalPages: number;
-    totalReviews: number;
-    pageSize: number;
-  };
-  bookRating: {
-    averageRating: number;
-    totalReviews: number;
-  };
+  sort_by?: 'created_at' | 'rating' | 'updated_at';
+  sort_order?: 'asc' | 'desc';
+  rating_filter?: number;
 }
 
 export interface DeleteResponse {
   success: boolean;
   message: string;
-  updatedBookRating?: {
-    averageRating: number;
-    totalReviews: number;
-  };
+}
+
+// Frontend data interfaces for Redux
+export interface CreateReviewData {
+  bookId: string;
+  rating: number;
+  review_text?: string;
+}
+
+export interface UpdateReviewData {
+  reviewId: string;
+  rating?: number;
+  review_text?: string;
 }
 
 // User API Types
@@ -304,14 +354,11 @@ export interface UserFavoritesResponse {
 }
 
 export interface UserReviewsResponse {
-  success: boolean;
-  reviews: (Review & { book: Book })[];
-  totalReviews: number;
-  pagination: {
-    currentPage: number;
-    totalPages: number;
-    pageSize: number;
-  };
+  reviews: any[]; // Reviews with book information from API
+  total: number;
+  skip: number;
+  limit: number;
+  pages: number;
 }
 
 // Generic API Response Wrapper

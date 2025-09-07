@@ -4,7 +4,7 @@
  */
 
 import React from 'react';
-import { Box, IconButton, useTheme } from '@mui/material';
+import { Box, IconButton } from '@mui/material';
 import { ChevronLeft, ChevronRight } from '@mui/icons-material';
 import { BookDisplay } from '@/types';
 import { BookCard } from './BookCard';
@@ -32,7 +32,7 @@ export const HorizontalBookList: React.FC<HorizontalBookListProps> = ({
   showFavorites = false,
   emptyMessage = 'No books available',
 }) => {
-  const theme = useTheme();
+  // const theme = useTheme();
   const scrollContainerRef = React.useRef<HTMLDivElement>(null);
 
   const scroll = (direction: 'left' | 'right') => {
@@ -178,10 +178,10 @@ export const HorizontalBookList: React.FC<HorizontalBookListProps> = ({
               <BookCard
                 book={book}
                 onClick={onBookClick}
-                onFavoriteClick={onFavoriteClick}
+                onFavoriteClick={(bookId) => onFavoriteClick?.(bookId, false)}
                 isFavorite={isFavorite}
                 variant={variant}
-                showGenres={showGenres}
+                showGenre={showGenres}
                 showFavorite={showFavorites}
               />
             </Box>

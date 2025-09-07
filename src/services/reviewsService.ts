@@ -8,10 +8,10 @@ import { API_CONFIG } from '@/config/api';
 import {
   CreateReviewRequest,
   UpdateReviewRequest,
-  ReviewResponse,
+  ReviewDetailResponse,
+  ReviewSummaryAPI,
+  ReviewListResponse,
   ReviewsQuery,
-  ReviewsResponse,
-  DeleteResponse,
 } from '@/types/api';
 
 /**
@@ -21,10 +21,10 @@ export const reviewsService = {
   /**
    * Create a new review for a book
    */
-  createReview: async (data: CreateReviewRequest): Promise<ReviewResponse> => {
+  createReview: async (bookId: string, data: CreateReviewRequest): Promise<ReviewSummaryAPI> => {
     return retryRequest(async () => {
-      const response = await apiClient.post<ReviewResponse>(
-        API_CONFIG.ENDPOINTS.REVIEWS.BASE,
+      const response = await apiClient.post<ReviewSummaryAPI>(
+        API_CONFIG.ENDPOINTS.REVIEWS.BY_BOOK(bookId),
         data
       );
       return response.data;
@@ -37,9 +37,9 @@ export const reviewsService = {
   updateReview: async (
     reviewId: string,
     data: UpdateReviewRequest
-  ): Promise<ReviewResponse> => {
+  ): Promise<ReviewSummaryAPI> => {
     return retryRequest(async () => {
-      const response = await apiClient.put<ReviewResponse>(
+      const response = await apiClient.put<ReviewSummaryAPI>(
         API_CONFIG.ENDPOINTS.REVIEWS.BY_ID(reviewId),
         data
       );
@@ -50,24 +50,23 @@ export const reviewsService = {
   /**
    * Delete a review
    */
-  deleteReview: async (reviewId: string): Promise<DeleteResponse> => {
+  deleteReview: async (reviewId: string): Promise<void> => {
     return retryRequest(async () => {
-      const response = await apiClient.delete<DeleteResponse>(
+      await apiClient.delete(
         API_CONFIG.ENDPOINTS.REVIEWS.BY_ID(reviewId)
       );
-      return response.data;
     });
   },
 
   /**
    * Get reviews for a specific book
    */
-  getReviewsForBook: async (
+  getBookReviews: async (
     bookId: string,
     query: ReviewsQuery = {}
-  ): Promise<ReviewsResponse> => {
+  ): Promise<ReviewListResponse> => {
     return retryRequest(async () => {
-      const response = await apiClient.get<ReviewsResponse>(
+      const response = await apiClient.get<ReviewListResponse>(
         API_CONFIG.ENDPOINTS.REVIEWS.BY_BOOK(bookId),
         { params: query }
       );
@@ -78,9 +77,9 @@ export const reviewsService = {
   /**
    * Get a specific review by ID
    */
-  getReviewById: async (reviewId: string): Promise<ReviewResponse> => {
+  getReviewById: async (reviewId: string): Promise<ReviewDetailResponse> => {
     return retryRequest(async () => {
-      const response = await apiClient.get<ReviewResponse>(
+      const response = await apiClient.get<ReviewDetailResponse>(
         API_CONFIG.ENDPOINTS.REVIEWS.BY_ID(reviewId)
       );
       return response.data;
@@ -92,12 +91,12 @@ export const reviewsService = {
    */
   getTopReviews: async (
     bookId: string,
-    query: Omit<ReviewsQuery, 'sortBy' | 'sortOrder'> = {}
-  ): Promise<ReviewsResponse> => {
-    return reviewsService.getReviewsForBook(bookId, {
+    query: Omit<ReviewsQuery, 'sort_by' | 'sort_order'> = {}
+  ): Promise<ReviewListResponse> => {
+    return reviewsService.getBookReviews(bookId, {
       ...query,
-      sortBy: 'rating',
-      sortOrder: 'desc',
+      sort_by: 'rating',
+      sort_order: 'desc',
     });
   },
 
@@ -106,12 +105,12 @@ export const reviewsService = {
    */
   getRecentReviews: async (
     bookId: string,
-    query: Omit<ReviewsQuery, 'sortBy' | 'sortOrder'> = {}
-  ): Promise<ReviewsResponse> => {
-    return reviewsService.getReviewsForBook(bookId, {
+    query: Omit<ReviewsQuery, 'sort_by' | 'sort_order'> = {}
+  ): Promise<ReviewListResponse> => {
+    return reviewsService.getBookReviews(bookId, {
       ...query,
-      sortBy: 'createdAt',
-      sortOrder: 'desc',
+      sort_by: 'created_at',
+      sort_order: 'desc',
     });
   },
 
@@ -120,12 +119,12 @@ export const reviewsService = {
    */
   getHelpfulReviews: async (
     bookId: string,
-    query: Omit<ReviewsQuery, 'sortBy' | 'sortOrder'> = {}
-  ): Promise<ReviewsResponse> => {
-    return reviewsService.getReviewsForBook(bookId, {
+    query: Omit<ReviewsQuery, 'sort_by' | 'sort_order'> = {}
+  ): Promise<ReviewListResponse> => {
+    return reviewsService.getBookReviews(bookId, {
       ...query,
-      sortBy: 'helpful',
-      sortOrder: 'desc',
+      sort_by: 'updated_at',
+      sort_order: 'desc',
     });
   },
 
@@ -134,8 +133,9 @@ export const reviewsService = {
    */
   hasUserReviewed: async (bookId: string): Promise<boolean> => {
     try {
-      const response = await apiClient.get(`/reviews/user/book/${bookId}`);
-      return response.data.hasReviewed;
+      // Get user's reviews and check if any match the book ID
+      const userReviews = await apiClient.get('/api/v1/users/reviews');
+      return userReviews.data.reviews?.some((review: any) => review.book_id === bookId) || false;
     } catch (error) {
       return false;
     }
@@ -144,12 +144,12 @@ export const reviewsService = {
   /**
    * Get user's review for a specific book
    */
-  getUserReviewForBook: async (bookId: string): Promise<ReviewResponse | null> => {
+  getUserReviewForBook: async (bookId: string): Promise<ReviewDetailResponse | null> => {
     try {
-      const response = await apiClient.get<ReviewResponse>(
-        `/reviews/user/book/${bookId}`
-      );
-      return response.data;
+      // Get user's reviews and find the one for this book
+      const userReviews = await apiClient.get('/api/v1/users/reviews');
+      const review = userReviews.data.reviews?.find((review: any) => review.book_id === bookId);
+      return review || null;
     } catch (error) {
       return null;
     }

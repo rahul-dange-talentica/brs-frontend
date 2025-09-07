@@ -11,7 +11,7 @@ import {
   BookDetailsResponse,
   SearchQuery,
   SearchResponse,
-  RecommendationType,
+  // RecommendationType,
   RecommendationsResponse,
   Genre,
 } from '@/types/api';

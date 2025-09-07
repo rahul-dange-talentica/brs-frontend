@@ -10,8 +10,8 @@ import {
   Typography,
   Button,
   Divider,
-  useMediaQuery,
-  useTheme,
+  // useMediaQuery,
+  // useTheme,
 } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
@@ -41,8 +41,8 @@ import { Section } from '@/components/common';
 export const HomePage: React.FC = () => {
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
-  const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+  // const theme = useTheme();
+  // const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
   const isAuthenticated = useAppSelector(selectIsAuthenticated);
   const popularBooks = useAppSelector(selectPopularBooks);

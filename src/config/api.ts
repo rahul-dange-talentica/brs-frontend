@@ -24,7 +24,7 @@ export const API_CONFIG = {
       LOGIN: '/api/v1/auth/login/json',
       REGISTER: '/api/v1/auth/register',
       LOGOUT: '/api/v1/auth/logout',
-      VERIFY: '/api/v1/auth/verify',
+      ME: '/api/v1/auth/me',
     },
     
     // Books
@@ -54,6 +54,7 @@ export const API_CONFIG = {
     USERS: {
       PROFILE: '/api/v1/users/profile',
       FAVORITES: '/api/v1/users/favorites',
+      REVIEWS: '/api/v1/users/reviews',
     },
     
     // Genres

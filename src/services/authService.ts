@@ -29,6 +29,18 @@ export const authService = {
         credentials
       );
       
+      // Store the JWT token in localStorage
+      if (response.data.access_token) {
+        localStorage.setItem('authToken', response.data.access_token);
+        
+        // Set token expiration timer
+        const expiresIn = response.data.expires_in || 1800; // 30 minutes default
+        setTimeout(() => {
+          localStorage.removeItem('authToken');
+          // Could dispatch logout action here
+        }, expiresIn * 1000);
+      }
+      
       // Transform backend response to frontend format
       const backendUser = response.data.user;
       const frontendUser: UserProfile = {
@@ -69,6 +81,18 @@ export const authService = {
         backendData
       );
       
+      // Store the JWT token in localStorage
+      if (response.data.access_token) {
+        localStorage.setItem('authToken', response.data.access_token);
+        
+        // Set token expiration timer
+        const expiresIn = response.data.expires_in || 1800; // 30 minutes default
+        setTimeout(() => {
+          localStorage.removeItem('authToken');
+          // Could dispatch logout action here
+        }, expiresIn * 1000);
+      }
+      
       // Transform backend response to frontend format
       const backendUser = response.data.user;
       const frontendUser: UserProfile = {
@@ -99,6 +123,10 @@ export const authService = {
       const response = await apiClient.post<LogoutResponse>(
         API_CONFIG.ENDPOINTS.AUTH.LOGOUT
       );
+      
+      // Remove token from localStorage
+      localStorage.removeItem('authToken');
+      
       return response.data;
     });
   },
@@ -108,10 +136,35 @@ export const authService = {
    */
   verifyToken: async (): Promise<VerifyResponse> => {
     return retryRequest(async () => {
-      const response = await apiClient.get<VerifyResponse>(
-        API_CONFIG.ENDPOINTS.AUTH.VERIFY
+      // Check if token exists first
+      const token = localStorage.getItem('authToken');
+      if (!token) {
+        throw new Error('No authentication token found');
+      }
+      
+      const response = await apiClient.get(
+        API_CONFIG.ENDPOINTS.AUTH.ME
       );
-      return response.data;
+      
+      // Transform the user response to match our VerifyResponse format
+      const backendUser = response.data;
+      const frontendUser: UserProfile = {
+        id: backendUser.id,
+        email: backendUser.email,
+        firstName: backendUser.first_name,
+        lastName: backendUser.last_name,
+        favoriteGenres: [],
+        totalReviews: 0,
+        averageRating: 0,
+        createdAt: backendUser.created_at,
+        updatedAt: backendUser.updated_at,
+      };
+      
+      return {
+        success: true,
+        user: frontendUser,
+        message: 'Token verified successfully'
+      };
     });
   },
 
@@ -120,9 +173,17 @@ export const authService = {
    */
   isAuthenticated: async (): Promise<boolean> => {
     try {
+      // Quick check for token existence
+      const token = localStorage.getItem('authToken');
+      if (!token) {
+        return false;
+      }
+      
       const result = await authService.verifyToken();
       return result.success && result.user !== null;
     } catch (error) {
+      // If verification fails, remove invalid token
+      localStorage.removeItem('authToken');
       return false;
     }
   },
@@ -135,8 +196,24 @@ export const authService = {
       const result = await authService.verifyToken();
       return result.success ? result.user : null;
     } catch (error) {
+      // If verification fails, remove invalid token
+      localStorage.removeItem('authToken');
       return null;
     }
+  },
+
+  /**
+   * Check if user has a valid token in localStorage
+   */
+  hasToken: (): boolean => {
+    return !!localStorage.getItem('authToken');
+  },
+
+  /**
+   * Get the current token from localStorage
+   */
+  getToken: (): string | null => {
+    return localStorage.getItem('authToken');
   },
 };
 

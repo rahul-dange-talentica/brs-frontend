@@ -24,7 +24,7 @@ export const useRatingPolling = (
 ) => {
   const {
     enabled = true,
-    interval = API_CONFIG.POLLING_INTERVAL,
+    interval = 60000, // 60 seconds for single book polling
     onError,
   } = options;
 
@@ -111,7 +111,7 @@ export const useMultipleRatingPolling = (
 ) => {
   const {
     enabled = true,
-    interval = API_CONFIG.POLLING_INTERVAL * 2, // Longer interval for multiple books
+    interval = 120000, // 120 seconds for multiple books (longer than single book)
     onError,
   } = options;
 
@@ -125,7 +125,7 @@ export const useMultipleRatingPolling = (
     isPollingRef.current = true;
     try {
       // Poll ratings for multiple books (limited to prevent API overload)
-      const limitedBookIds = bookIds.slice(0, 10); // Limit to 10 books at once
+      const limitedBookIds = bookIds.slice(0, 5); // Limit to 5 books at once
       
       const promises = limitedBookIds.map(async (bookId) => {
         try {

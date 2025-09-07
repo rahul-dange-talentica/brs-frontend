@@ -1,5 +1,5 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
-import { Review, ApiError } from '../types';
+import { Review, ApiError, CreateReviewData, UpdateReviewData } from '../types';
 import { reviewsService, userService } from '@/services';
 import { handleAPIError, getValidationErrors } from '@/utils/errorHandler';
 import { AxiosError } from 'axios';
@@ -13,19 +13,7 @@ interface ReviewsState {
   error: string | null;
 }
 
-interface CreateReviewData {
-  bookId: string;
-  rating: number;
-  reviewText: string;
-  title?: string;
-}
-
-interface UpdateReviewData {
-  reviewId: string;
-  rating?: number;
-  reviewText?: string;
-  title?: string;
-}
+// CreateReviewData and UpdateReviewData are now imported from types
 
 const initialState: ReviewsState = {
   reviews: [],
@@ -44,13 +32,27 @@ export const createReview = createAsyncThunk<
   { rejectValue: ApiError }
 >('reviews/createReview', async (reviewData, { rejectWithValue }) => {
   try {
-    const response = await reviewsService.createReview(reviewData);
+    const response = await reviewsService.createReview(reviewData.bookId, {
+      rating: reviewData.rating,
+      review_text: reviewData.review_text
+    });
     
-    if (response.success && response.review) {
-      return response.review;
-    } else {
-      throw new Error('Failed to create review');
-    }
+    // Transform the API response to frontend format
+    return {
+      id: response.id,
+      bookId: response.book_id,
+      userId: response.user_id,
+      rating: response.rating,
+      reviewText: response.review_text,
+      createdAt: response.created_at,
+      updatedAt: response.updated_at,
+      user: {
+        id: response.user_id,
+        firstName: 'User',
+        lastName: '',
+      },
+      isOwn: true
+    } as Review;
   } catch (error: any) {
     if (error instanceof AxiosError) {
       return rejectWithValue({
@@ -75,11 +77,22 @@ export const updateReview = createAsyncThunk<
     const { reviewId, ...updateFields } = updateData;
     const response = await reviewsService.updateReview(reviewId, updateFields);
     
-    if (response.success && response.review) {
-      return response.review;
-    } else {
-      throw new Error('Failed to update review');
-    }
+    // Transform the API response to frontend format
+    return {
+      id: response.id,
+      bookId: response.book_id,
+      userId: response.user_id,
+      rating: response.rating,
+      reviewText: response.review_text,
+      createdAt: response.created_at,
+      updatedAt: response.updated_at,
+      user: {
+        id: response.user_id,
+        firstName: 'User',
+        lastName: '',
+      },
+      isOwn: true
+    } as Review;
   } catch (error: any) {
     if (error instanceof AxiosError) {
       return rejectWithValue({
@@ -101,13 +114,8 @@ export const deleteReview = createAsyncThunk<
   { rejectValue: ApiError }
 >('reviews/deleteReview', async (reviewId, { rejectWithValue }) => {
   try {
-    const response = await reviewsService.deleteReview(reviewId);
-    
-    if (response.success) {
-      return reviewId;
-    } else {
-      throw new Error(response.message || 'Failed to delete review');
-    }
+    await reviewsService.deleteReview(reviewId);
+    return reviewId;
   } catch (error: any) {
     if (error instanceof AxiosError) {
       return rejectWithValue({
@@ -128,18 +136,28 @@ export const fetchBookReviews = createAsyncThunk<
   { rejectValue: ApiError }
 >('reviews/fetchBookReviews', async ({ bookId, page = 1, pageSize = 10 }, { rejectWithValue }) => {
   try {
-    const response = await reviewsService.getReviewsForBook(bookId, {
-      page,
+    const response = await reviewsService.getBookReviews(bookId, {
+      skip: (page - 1) * pageSize,
       limit: pageSize,
-      sortBy: 'createdAt',
-      sortOrder: 'desc',
+      sort_by: 'created_at',
+      sort_order: 'desc',
     });
     
-    if (response.success) {
-      return response.reviews;
-    } else {
-      throw new Error('Failed to fetch book reviews');
-    }
+    // Transform API reviews to frontend format
+    return response.reviews.map(review => ({
+      id: review.id,
+      bookId: review.book_id,
+      userId: review.user_id,
+      rating: review.rating,
+      reviewText: review.review_text,
+      createdAt: review.created_at,
+      updatedAt: review.updated_at,
+      user: {
+        id: review.user_id,
+        firstName: review.user_name?.split(' ')[0] || 'User',
+        lastName: review.user_name?.split(' ').slice(1).join(' ') || '',
+      }
+    } as Review));
   } catch (error: any) {
     if (error instanceof AxiosError) {
       return rejectWithValue({
@@ -162,17 +180,37 @@ export const fetchUserReviews = createAsyncThunk<
   try {
     const response = await userService.getUserReviews(page, pageSize);
     
-    if (response.success) {
-      // Extract reviews from the response (they include book information)
+    // The API returns a custom paginated format like { reviews: [...], total, skip, limit, pages }
+    // Transform the API reviews to frontend format
+    if (response.reviews) {
+      return response.reviews.map(reviewWithBook => ({
+        id: reviewWithBook.id,
+        bookId: reviewWithBook.book_id || reviewWithBook.bookId,
+        userId: reviewWithBook.user_id || reviewWithBook.userId,
+        rating: reviewWithBook.rating,
+        reviewText: reviewWithBook.review_text || reviewWithBook.reviewText || '',
+        createdAt: reviewWithBook.created_at || reviewWithBook.createdAt,
+        updatedAt: reviewWithBook.updated_at || reviewWithBook.updatedAt,
+        user: {
+          id: reviewWithBook.user_id || reviewWithBook.userId,
+          firstName: reviewWithBook.user_name?.split(' ')[0] || 'User',
+          lastName: reviewWithBook.user_name?.split(' ').slice(1).join(' ') || '',
+          name: reviewWithBook.user_name || 'Anonymous User'
+        },
+        isOwn: true // User's own reviews
+      } as Review));
+    } else if (response.success && response.reviews) {
+      // Fallback to old format if success wrapper exists
       return response.reviews.map(reviewWithBook => ({
         ...reviewWithBook,
         // Remove book information from review object to match Review interface
         book: undefined,
       }));
     } else {
-      throw new Error('Failed to fetch user reviews');
+      throw new Error('Failed to fetch user reviews - invalid response format');
     }
   } catch (error: any) {
+    console.error('fetchUserReviews error:', error);
     if (error instanceof AxiosError) {
       return rejectWithValue({
         message: handleAPIError(error),
