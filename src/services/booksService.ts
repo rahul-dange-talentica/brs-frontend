@@ -13,6 +13,7 @@ import {
   SearchResponse,
   RecommendationType,
   RecommendationsResponse,
+  Genre,
 } from '@/types/api';
 
 /**
@@ -80,17 +81,14 @@ export const booksService = {
   },
 
   /**
-   * Get book recommendations based on type
+   * Get popular book recommendations
    */
-  getRecommendations: async (
-    type: RecommendationType,
-    limit: number = 10
-  ): Promise<RecommendationsResponse> => {
+  getPopularBooks: async (limit: number = 10): Promise<RecommendationsResponse> => {
     return retryRequest(async () => {
       const response = await apiClient.get<RecommendationsResponse>(
-        API_CONFIG.ENDPOINTS.BOOKS.RECOMMENDATIONS,
+        API_CONFIG.ENDPOINTS.RECOMMENDATIONS.POPULAR,
         {
-          params: { type, limit }
+          params: { limit }
         }
       );
       return response.data;
@@ -98,56 +96,85 @@ export const booksService = {
   },
 
   /**
-   * Get popular books (shortcut for popular recommendations)
+   * Get trending book recommendations
    */
-  getPopularBooks: async (limit: number = 10): Promise<RecommendationsResponse> => {
-    return booksService.getRecommendations('popular', limit);
-  },
-
-  /**
-   * Get genre-based recommendations
-   */
-  getGenreBasedRecommendations: async (limit: number = 10): Promise<RecommendationsResponse> => {
-    return booksService.getRecommendations('genre-based', limit);
+  getTrendingBooks: async (limit: number = 10, days_back: number = 30): Promise<RecommendationsResponse> => {
+    return retryRequest(async () => {
+      const response = await apiClient.get<RecommendationsResponse>(
+        API_CONFIG.ENDPOINTS.RECOMMENDATIONS.TRENDING,
+        {
+          params: { limit, days_back }
+        }
+      );
+      return response.data;
+    });
   },
 
   /**
    * Get personalized recommendations for logged-in user
    */
-  getPersonalizedRecommendations: async (limit: number = 10): Promise<RecommendationsResponse> => {
-    return booksService.getRecommendations('personalized', limit);
+  getPersonalRecommendations: async (limit: number = 10): Promise<RecommendationsResponse> => {
+    return retryRequest(async () => {
+      const response = await apiClient.get<RecommendationsResponse>(
+        API_CONFIG.ENDPOINTS.RECOMMENDATIONS.PERSONAL,
+        {
+          params: { limit }
+        }
+      );
+      return response.data;
+    });
+  },
+
+  /**
+   * Get genre-based recommendations
+   */
+  getGenreBasedRecommendations: async (genreId: string, limit: number = 10): Promise<RecommendationsResponse> => {
+    return retryRequest(async () => {
+      const response = await apiClient.get<RecommendationsResponse>(
+        API_CONFIG.ENDPOINTS.RECOMMENDATIONS.GENRE(genreId),
+        {
+          params: { limit }
+        }
+      );
+      return response.data;
+    });
+  },
+
+  /**
+   * Get diverse recommendations across multiple genres
+   */
+  getDiverseRecommendations: async (limit: number = 10, genre_count: number = 5): Promise<RecommendationsResponse> => {
+    return retryRequest(async () => {
+      const response = await apiClient.get<RecommendationsResponse>(
+        API_CONFIG.ENDPOINTS.RECOMMENDATIONS.DIVERSITY,
+        {
+          params: { limit, genre_count }
+        }
+      );
+      return response.data;
+    });
   },
 
   /**
    * Get books by genre with pagination
    */
   getBooksByGenre: async (
-    genre: string,
-    query: Omit<BooksQuery, 'genre'> = {}
+    genre_id: string,
+    query: Omit<BooksQuery, 'genre_id'> = {}
   ): Promise<BooksResponse> => {
-    return booksService.getAllBooks({ ...query, genre });
-  },
-
-  /**
-   * Get books by author with pagination
-   */
-  getBooksByAuthor: async (
-    author: string,
-    query: Omit<BooksQuery, 'author'> = {}
-  ): Promise<BooksResponse> => {
-    return booksService.getAllBooks({ ...query, author });
+    return booksService.getAllBooks({ ...query, genre_id });
   },
 
   /**
    * Get top-rated books
    */
   getTopRatedBooks: async (
-    query: Omit<BooksQuery, 'sortBy' | 'sortOrder'> = {}
+    query: Omit<BooksQuery, 'sort_by' | 'sort_order'> = {}
   ): Promise<BooksResponse> => {
     return booksService.getAllBooks({
       ...query,
-      sortBy: 'rating',
-      sortOrder: 'desc',
+      sort_by: 'average_rating',
+      sort_order: 'desc',
     });
   },
 
@@ -155,21 +182,21 @@ export const booksService = {
    * Get recently published books
    */
   getRecentBooks: async (
-    query: Omit<BooksQuery, 'sortBy' | 'sortOrder'> = {}
+    query: Omit<BooksQuery, 'sort_by' | 'sort_order'> = {}
   ): Promise<BooksResponse> => {
     return booksService.getAllBooks({
       ...query,
-      sortBy: 'publishedDate',
-      sortOrder: 'desc',
+      sort_by: 'publication_date',
+      sort_order: 'desc',
     });
   },
 
   /**
-   * Get book genres available in the system
+   * Get book genres available in the system with book counts
    */
-  getAvailableGenres: async (): Promise<{ success: boolean; genres: string[] }> => {
+  getGenres: async (): Promise<Genre[]> => {
     return retryRequest(async () => {
-      const response = await apiClient.get<{ success: boolean; genres: string[] }>(
+      const response = await apiClient.get<Genre[]>(
         API_CONFIG.ENDPOINTS.GENRES.BASE
       );
       return response.data;

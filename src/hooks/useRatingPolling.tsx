@@ -39,13 +39,11 @@ export const useRatingPolling = (
     try {
       const bookDetails = await booksService.getBookById(bookId);
       
-      if (bookDetails.success) {
-        dispatch(updateBookRating({
-          bookId,
-          averageRating: bookDetails.book.averageRating,
-          totalReviews: bookDetails.book.totalReviews,
-        }));
-      }
+      dispatch(updateBookRating({
+        bookId,
+        averageRating: parseFloat(bookDetails.average_rating) || 0,
+        totalReviews: bookDetails.total_reviews,
+      }));
     } catch (error) {
       console.warn('Failed to poll rating updates:', error);
       if (onError) {
@@ -132,13 +130,11 @@ export const useMultipleRatingPolling = (
       const promises = limitedBookIds.map(async (bookId) => {
         try {
           const bookDetails = await booksService.getBookById(bookId);
-          if (bookDetails.success) {
-            return {
-              bookId,
-              averageRating: bookDetails.book.averageRating,
-              totalReviews: bookDetails.book.totalReviews,
-            };
-          }
+          return {
+            bookId,
+            averageRating: parseFloat(bookDetails.average_rating) || 0,
+            totalReviews: bookDetails.total_reviews,
+          };
         } catch (error) {
           console.warn(`Failed to poll rating for book ${bookId}:`, error);
         }

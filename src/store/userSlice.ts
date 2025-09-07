@@ -109,11 +109,11 @@ export const updateUserProfile = createAsyncThunk<
 
 export const fetchFavoriteBooks = createAsyncThunk<
   Book[],
-  { page?: number; limit?: number },
+  { skip?: number; limit?: number },
   { rejectValue: ApiError }
->('user/fetchFavoriteBooks', async ({ page = 1, limit = 20 }, { rejectWithValue }) => {
+>('user/fetchFavoriteBooks', async ({ skip = 0, limit = 20 }, { rejectWithValue }) => {
   try {
-    const response = await userService.getFavorites(page, limit);
+    const response = await userService.getFavorites(skip, limit);
     
     if (response.success) {
       return response.books;
@@ -224,15 +224,15 @@ export const addToReadingList = createAsyncThunk<
       id: bookId,
       title: 'Reading List Book',
       author: 'Sample Author',
-      genre: 'Fiction',
+      genres: [{ id: 'fiction', name: 'Fiction', description: null, created_at: new Date().toISOString() }],
       description: 'A book added to reading list.',
-      coverImage: 'https://covers.openlibrary.org/b/id/8225261-L.jpg',
-      averageRating: 4.0,
-      totalReviews: 50,
+      cover_image_url: 'https://covers.openlibrary.org/b/id/8225261-L.jpg',
+      average_rating: '4.0',
+      total_reviews: 50,
       isbn: '9780000000001',
-      publishedDate: '2024-01-01',
-      createdAt: '2024-01-01T00:00:00Z',
-      updatedAt: '2024-01-01T00:00:00Z',
+      publication_date: '2024-01-01',
+      created_at: '2024-01-01T00:00:00Z',
+      updated_at: '2024-01-01T00:00:00Z',
     };
     
     return mockBook;

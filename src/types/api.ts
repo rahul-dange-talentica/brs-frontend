@@ -1,17 +1,57 @@
-// Existing types
+// Backend API types (matching OpenAPI spec exactly)
+export interface Genre {
+  id: string;
+  name: string;
+  description: string | null;
+  created_at: string;
+}
+
+export interface GenreWithCount extends Genre {
+  book_count: number;
+}
+
+// Review Summary interface (exported for use in other interfaces)
+export interface ReviewSummary {
+  id: string;
+  user_id: string;
+  book_id: string;
+  rating: number;
+  review_text: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface Book {
   id: string;
   title: string;
   author: string;
-  genre: string;
-  description: string;
-  coverImage: string;
-  averageRating: number;
+  isbn: string | null;
+  description: string | null;
+  cover_image_url: string | null;
+  publication_date: string | null;
+  average_rating: string; // Backend returns as string
+  total_reviews: number;
+  created_at: string;
+  updated_at: string;
+  genres?: Genre[];
+  recent_reviews?: ReviewSummary[];
+}
+
+// Frontend-friendly Book interface for components
+export interface BookDisplay {
+  id: string;
+  title: string;
+  author: string;
+  isbn: string | null;
+  description: string | null;
+  coverImage: string | null;
+  publishedDate: string | null;
+  averageRating: number; // Converted to number for frontend
   totalReviews: number;
-  isbn: string;
-  publishedDate: string;
   createdAt: string;
   updatedAt: string;
+  genres: Genre[];
+  recentReviews?: ReviewSummary[];
 }
 
 export interface Review {
@@ -50,14 +90,16 @@ export interface PaginationState {
   totalPages: number;
   totalBooks: number;
   pageSize: number;
+  hasNext?: boolean;
+  hasPrev?: boolean;
 }
 
 export interface SearchFilters {
   query?: string;
-  genre?: string;
-  author?: string;
+  genreId?: string;
   minRating?: number;
-  sortBy?: 'title' | 'author' | 'rating' | 'publishedDate' | 'createdAt';
+  maxRating?: number;
+  sortBy?: 'title' | 'author' | 'average_rating' | 'publication_date' | 'created_at';
   sortOrder?: 'asc' | 'desc';
 }
 
@@ -123,63 +165,57 @@ export interface LogoutResponse {
   message: string;
 }
 
-// Books API Types
+// Books API Types (matching backend parameters)
 export interface BooksQuery {
-  page?: number;
+  skip?: number; // Backend uses skip instead of page
   limit?: number;
-  genre?: string;
-  author?: string;
-  minRating?: number;
-  sortBy?: 'title' | 'author' | 'rating' | 'publishedDate' | 'createdAt';
-  sortOrder?: 'asc' | 'desc';
+  genre_id?: string; // Backend uses genre_id not genre
+  min_rating?: number;
+  max_rating?: number;
+  sort_by?: 'title' | 'author' | 'average_rating' | 'publication_date' | 'created_at';
+  sort_order?: 'asc' | 'desc';
 }
 
 export interface BooksResponse {
-  success: boolean;
   books: Book[];
-  pagination: {
-    currentPage: number;
-    totalPages: number;
-    totalBooks: number;
-    pageSize: number;
-  };
+  total: number;
+  skip: number;
+  limit: number;
+  pages: number;
 }
 
-export interface BookDetailsResponse {
-  success: boolean;
-  book: Book & {
-    reviews: Review[];
-    userReview?: Review;
-    isFavorite?: boolean;
-  };
+export interface BookDetailsResponse extends Book {
+  // Individual book endpoint returns BookResponse directly
 }
 
 export interface SearchQuery {
   q: string;
-  genre?: string;
-  author?: string;
+  genre_id?: string;
+  min_rating?: number;
+  skip?: number;
   limit?: number;
-  page?: number;
 }
 
 export interface SearchResponse {
-  success: boolean;
   books: Book[];
-  totalResults: number;
-  pagination: {
-    currentPage: number;
-    totalPages: number;
-    pageSize: number;
-  };
+  total: number;
+  skip: number;
+  limit: number;
+  pages: number;
+  query?: string; // Search query may be included in search responses
 }
 
 export type RecommendationType = 'popular' | 'genre-based' | 'personalized';
 
 export interface RecommendationsResponse {
-  success: boolean;
-  books: Book[];
-  type: RecommendationType;
-  message?: string;
+  recommendations: Book[];
+  recommendation_type: string;
+  total: number;
+  limit: number;
+  filters?: any;
+  genre?: any; // For genre-based recommendations
+  explanation?: string; // For personal recommendations
+  user_id?: string; // For personal recommendations
 }
 
 // Reviews API Types

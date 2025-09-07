@@ -84,11 +84,11 @@ export const userService = {
   /**
    * Get user's favorite books
    */
-  getFavorites: async (page: number = 1, limit: number = 20): Promise<UserFavoritesResponse> => {
+  getFavorites: async (skip: number = 0, limit: number = 20): Promise<UserFavoritesResponse> => {
     return retryRequest(async () => {
       const response = await apiClient.get<UserFavoritesResponse>(
         API_CONFIG.ENDPOINTS.USERS.FAVORITES,
-        { params: { page, limit } }
+        { params: { skip, limit } }
       );
       return response.data;
     });

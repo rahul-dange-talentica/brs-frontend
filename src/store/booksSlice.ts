@@ -8,10 +8,14 @@ interface BooksState {
   books: Book[];
   currentBook: Book | null;
   searchResults: Book[];
-  recommendations: Book[];
+  popularBooks: Book[];
+  trendingBooks: Book[];
+  personalRecommendations: Book[];
   loading: boolean;
   searchLoading: boolean;
-  recommendationsLoading: boolean;
+  popularBooksLoading: boolean;
+  trendingBooksLoading: boolean;
+  personalRecommendationsLoading: boolean;
   error: string | null;
   pagination: PaginationState | null;
   searchFilters: SearchFilters;
@@ -22,10 +26,14 @@ const initialState: BooksState = {
   books: [],
   currentBook: null,
   searchResults: [],
-  recommendations: [],
+  popularBooks: [],
+  trendingBooks: [],
+  personalRecommendations: [],
   loading: false,
   searchLoading: false,
-  recommendationsLoading: false,
+  popularBooksLoading: false,
+  trendingBooksLoading: false,
+  personalRecommendationsLoading: false,
   error: null,
   pagination: null,
   searchFilters: {
@@ -40,28 +48,27 @@ const initialState: BooksState = {
 // Async thunks
 export const fetchBooks = createAsyncThunk<
   { books: Book[]; pagination: PaginationState },
-  { page?: number; pageSize?: number },
+  { skip?: number; limit?: number; genre_id?: string; min_rating?: number; max_rating?: number; sort_by?: 'title' | 'author' | 'average_rating' | 'publication_date' | 'created_at'; sort_order?: 'asc' | 'desc' },
   { rejectValue: ApiError }
->('books/fetchBooks', async ({ page = 1, pageSize = 10 }, { rejectWithValue }) => {
+>('books/fetchBooks', async ({ skip = 0, limit = 10, ...otherParams }, { rejectWithValue }) => {
   try {
     const response = await booksService.getAllBooks({
-      page,
-      limit: pageSize,
+      skip,
+      limit,
+      ...otherParams,
     });
     
-    if (response.success) {
-      return {
-        books: response.books,
-        pagination: {
-          currentPage: response.pagination.currentPage,
-          totalPages: response.pagination.totalPages,
-          totalBooks: response.pagination.totalBooks,
-          pageSize: response.pagination.pageSize,
-        },
-      };
-    } else {
-      throw new Error('Failed to fetch books');
-    }
+    return {
+      books: response.books,
+      pagination: {
+        currentPage: Math.floor(response.skip / response.limit) + 1,
+        totalPages: response.pages,
+        totalBooks: response.total,
+        pageSize: response.limit,
+        hasNext: Math.floor(response.skip / response.limit) + 1 < response.pages,
+        hasPrev: response.skip > 0,
+      },
+    };
   } catch (error: any) {
     if (error instanceof AxiosError) {
       return rejectWithValue({
@@ -84,27 +91,24 @@ export const searchBooks = createAsyncThunk<
   try {
     const searchQuery = {
       q: filters.query || '',
-      genre: filters.genre,
-      author: filters.author,
-      page: 1,
+      genre_id: filters.genreId,
+      skip: 0,
       limit: 20,
     };
     
     const response = await booksService.searchBooks(searchQuery);
     
-    if (response.success) {
-      return {
-        books: response.books,
-        pagination: {
-          currentPage: response.pagination.currentPage,
-          totalPages: response.pagination.totalPages,
-          totalBooks: response.totalResults,
-          pageSize: response.pagination.pageSize,
-        },
-      };
-    } else {
-      throw new Error('Search failed');
-    }
+    return {
+      books: response.books,
+      pagination: {
+        currentPage: Math.floor(response.skip / response.limit) + 1,
+        totalPages: response.pages,
+        totalBooks: response.total,
+        pageSize: response.limit,
+        hasNext: Math.floor(response.skip / response.limit) + 1 < response.pages,
+        hasPrev: response.skip > 0,
+      },
+    };
   } catch (error: any) {
     if (error instanceof AxiosError) {
       return rejectWithValue({
@@ -127,11 +131,7 @@ export const fetchBookById = createAsyncThunk<
   try {
     const response = await booksService.getBookById(bookId);
     
-    if (response.success && response.book) {
-      return response.book;
-    } else {
-      throw new Error('Book not found');
-    }
+    return response;
   } catch (error: any) {
     if (error instanceof AxiosError) {
       return rejectWithValue({
@@ -146,19 +146,15 @@ export const fetchBookById = createAsyncThunk<
   }
 });
 
-export const fetchRecommendations = createAsyncThunk<
+export const fetchPopularBooks = createAsyncThunk<
   Book[],
-  { type?: 'popular' | 'genre-based' | 'personalized'; limit?: number },
+  { limit?: number },
   { rejectValue: ApiError }
->('books/fetchRecommendations', async ({ type = 'popular', limit = 10 }, { rejectWithValue }) => {
+>('books/fetchPopularBooks', async ({ limit = 10 }, { rejectWithValue }) => {
   try {
-    const response = await booksService.getRecommendations(type, limit);
+    const response = await booksService.getPopularBooks(limit);
     
-    if (response.success) {
-      return response.books;
-    } else {
-      throw new Error('Failed to fetch recommendations');
-    }
+    return response.recommendations;
   } catch (error: any) {
     if (error instanceof AxiosError) {
       return rejectWithValue({
@@ -167,7 +163,53 @@ export const fetchRecommendations = createAsyncThunk<
       });
     }
     return rejectWithValue({
-      message: error.message || 'Failed to fetch recommendations',
+      message: error.message || 'Failed to fetch popular books',
+      status: 500,
+    });
+  }
+});
+
+export const fetchTrendingBooks = createAsyncThunk<
+  Book[],
+  { limit?: number; days_back?: number },
+  { rejectValue: ApiError }
+>('books/fetchTrendingBooks', async ({ limit = 10, days_back = 30 }, { rejectWithValue }) => {
+  try {
+    const response = await booksService.getTrendingBooks(limit, days_back);
+    
+    return response.recommendations;
+  } catch (error: any) {
+    if (error instanceof AxiosError) {
+      return rejectWithValue({
+        message: handleAPIError(error),
+        status: error.response?.status || 500,
+      });
+    }
+    return rejectWithValue({
+      message: error.message || 'Failed to fetch trending books',
+      status: 500,
+    });
+  }
+});
+
+export const fetchPersonalRecommendations = createAsyncThunk<
+  Book[],
+  { limit?: number },
+  { rejectValue: ApiError }
+>('books/fetchPersonalRecommendations', async ({ limit = 10 }, { rejectWithValue }) => {
+  try {
+    const response = await booksService.getPersonalRecommendations(limit);
+    
+    return response.recommendations;
+  } catch (error: any) {
+    if (error instanceof AxiosError) {
+      return rejectWithValue({
+        message: handleAPIError(error),
+        status: error.response?.status || 500,
+      });
+    }
+    return rejectWithValue({
+      message: error.message || 'Failed to fetch personal recommendations',
       status: 500,
     });
   }
@@ -182,11 +224,7 @@ export const fetchFeaturedBooks = createAsyncThunk<
     // Use popular recommendations as featured books
     const response = await booksService.getPopularBooks(6);
     
-    if (response.success) {
-      return response.books;
-    } else {
-      throw new Error('Failed to fetch featured books');
-    }
+    return response.recommendations;
   } catch (error: any) {
     if (error instanceof AxiosError) {
       return rejectWithValue({
@@ -224,35 +262,49 @@ const booksSlice = createSlice({
       // Update in books array
       const bookIndex = state.books.findIndex(book => book.id === bookId);
       if (bookIndex !== -1) {
-        state.books[bookIndex].averageRating = averageRating;
-        state.books[bookIndex].totalReviews = totalReviews;
+        state.books[bookIndex].average_rating = averageRating.toString();
+        state.books[bookIndex].total_reviews = totalReviews;
       }
       
       // Update in search results
       const searchIndex = state.searchResults.findIndex(book => book.id === bookId);
       if (searchIndex !== -1) {
-        state.searchResults[searchIndex].averageRating = averageRating;
-        state.searchResults[searchIndex].totalReviews = totalReviews;
+        state.searchResults[searchIndex].average_rating = averageRating.toString();
+        state.searchResults[searchIndex].total_reviews = totalReviews;
       }
       
       // Update current book
       if (state.currentBook && state.currentBook.id === bookId) {
-        state.currentBook.averageRating = averageRating;
-        state.currentBook.totalReviews = totalReviews;
+        state.currentBook.average_rating = averageRating.toString();
+        state.currentBook.total_reviews = totalReviews;
       }
       
-      // Update recommendations
-      const recIndex = state.recommendations.findIndex(book => book.id === bookId);
-      if (recIndex !== -1) {
-        state.recommendations[recIndex].averageRating = averageRating;
-        state.recommendations[recIndex].totalReviews = totalReviews;
+      // Update in popular books
+      const popularIndex = state.popularBooks.findIndex(book => book.id === bookId);
+      if (popularIndex !== -1) {
+        state.popularBooks[popularIndex].average_rating = averageRating.toString();
+        state.popularBooks[popularIndex].total_reviews = totalReviews;
+      }
+      
+      // Update in trending books
+      const trendingIndex = state.trendingBooks.findIndex(book => book.id === bookId);
+      if (trendingIndex !== -1) {
+        state.trendingBooks[trendingIndex].average_rating = averageRating.toString();
+        state.trendingBooks[trendingIndex].total_reviews = totalReviews;
+      }
+      
+      // Update in personal recommendations
+      const personalIndex = state.personalRecommendations.findIndex(book => book.id === bookId);
+      if (personalIndex !== -1) {
+        state.personalRecommendations[personalIndex].average_rating = averageRating.toString();
+        state.personalRecommendations[personalIndex].total_reviews = totalReviews;
       }
       
       // Update featured books
       const featuredIndex = state.featuredBooks.findIndex(book => book.id === bookId);
       if (featuredIndex !== -1) {
-        state.featuredBooks[featuredIndex].averageRating = averageRating;
-        state.featuredBooks[featuredIndex].totalReviews = totalReviews;
+        state.featuredBooks[featuredIndex].average_rating = averageRating.toString();
+        state.featuredBooks[featuredIndex].total_reviews = totalReviews;
       }
     },
   },
@@ -302,17 +354,41 @@ const booksSlice = createSlice({
         state.loading = false;
         state.error = action.payload?.message || 'Failed to fetch book';
       })
-      // Fetch recommendations cases
-      .addCase(fetchRecommendations.pending, (state) => {
-        state.recommendationsLoading = true;
+      // Fetch popular books cases
+      .addCase(fetchPopularBooks.pending, (state) => {
+        state.popularBooksLoading = true;
       })
-      .addCase(fetchRecommendations.fulfilled, (state, action) => {
-        state.recommendationsLoading = false;
-        state.recommendations = action.payload;
+      .addCase(fetchPopularBooks.fulfilled, (state, action) => {
+        state.popularBooksLoading = false;
+        state.popularBooks = action.payload;
       })
-      .addCase(fetchRecommendations.rejected, (state, action) => {
-        state.recommendationsLoading = false;
-        state.error = action.payload?.message || 'Failed to fetch recommendations';
+      .addCase(fetchPopularBooks.rejected, (state, action) => {
+        state.popularBooksLoading = false;
+        state.error = action.payload?.message || 'Failed to fetch popular books';
+      })
+      // Fetch trending books cases
+      .addCase(fetchTrendingBooks.pending, (state) => {
+        state.trendingBooksLoading = true;
+      })
+      .addCase(fetchTrendingBooks.fulfilled, (state, action) => {
+        state.trendingBooksLoading = false;
+        state.trendingBooks = action.payload;
+      })
+      .addCase(fetchTrendingBooks.rejected, (state, action) => {
+        state.trendingBooksLoading = false;
+        state.error = action.payload?.message || 'Failed to fetch trending books';
+      })
+      // Fetch personal recommendations cases
+      .addCase(fetchPersonalRecommendations.pending, (state) => {
+        state.personalRecommendationsLoading = true;
+      })
+      .addCase(fetchPersonalRecommendations.fulfilled, (state, action) => {
+        state.personalRecommendationsLoading = false;
+        state.personalRecommendations = action.payload;
+      })
+      .addCase(fetchPersonalRecommendations.rejected, (state, action) => {
+        state.personalRecommendationsLoading = false;
+        state.error = action.payload?.message || 'Failed to fetch personal recommendations';
       })
       // Fetch featured books cases
       .addCase(fetchFeaturedBooks.pending, (state) => {
@@ -341,10 +417,14 @@ export const {
 export const selectBooks = (state: { books: BooksState }) => state.books.books;
 export const selectCurrentBook = (state: { books: BooksState }) => state.books.currentBook;
 export const selectSearchResults = (state: { books: BooksState }) => state.books.searchResults;
-export const selectRecommendations = (state: { books: BooksState }) => state.books.recommendations;
+export const selectPopularBooks = (state: { books: BooksState }) => state.books.popularBooks;
+export const selectTrendingBooks = (state: { books: BooksState }) => state.books.trendingBooks;
+export const selectPersonalRecommendations = (state: { books: BooksState }) => state.books.personalRecommendations;
 export const selectBooksLoading = (state: { books: BooksState }) => state.books.loading;
 export const selectSearchLoading = (state: { books: BooksState }) => state.books.searchLoading;
-export const selectRecommendationsLoading = (state: { books: BooksState }) => state.books.recommendationsLoading;
+export const selectPopularBooksLoading = (state: { books: BooksState }) => state.books.popularBooksLoading;
+export const selectTrendingBooksLoading = (state: { books: BooksState }) => state.books.trendingBooksLoading;
+export const selectPersonalRecommendationsLoading = (state: { books: BooksState }) => state.books.personalRecommendationsLoading;
 export const selectBooksError = (state: { books: BooksState }) => state.books.error;
 export const selectBooksPagination = (state: { books: BooksState }) => state.books.pagination;
 export const selectSearchFilters = (state: { books: BooksState }) => state.books.searchFilters;

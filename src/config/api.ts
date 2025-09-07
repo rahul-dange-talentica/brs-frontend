@@ -32,7 +32,15 @@ export const API_CONFIG = {
       BASE: '/api/v1/books',
       SEARCH: '/api/v1/books/search',
       BY_ID: (id: string) => `/api/v1/books/${id}`,
-      RECOMMENDATIONS: '/api/v1/recommendations',
+    },
+    
+    // Recommendations
+    RECOMMENDATIONS: {
+      POPULAR: '/api/v1/recommendations/popular',
+      TRENDING: '/api/v1/recommendations/trending',
+      PERSONAL: '/api/v1/recommendations/personal',
+      GENRE: (genreId: string) => `/api/v1/recommendations/genre/${genreId}`,
+      DIVERSITY: '/api/v1/recommendations/diversity',
     },
     
     // Reviews
