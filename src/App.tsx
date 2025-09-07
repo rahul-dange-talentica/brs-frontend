@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Routes, Route } from 'react-router-dom';
+import React, { useEffect } from 'react';
+import { Routes, Route, Navigate } from 'react-router-dom';
 import { 
   Typography, 
   Box, 
@@ -16,119 +16,120 @@ import {
   TrendingUp as TrendingUpIcon,
   People as PeopleIcon,
 } from '@mui/icons-material';
-import { MainLayout, AuthLayout, Section, Breadcrumbs } from './components/common';
-import ReduxTest from './components/common/ReduxTest';
-import { User } from './types/common';
-
-// Mock user data for demonstration
-const mockUser: User = {
-  id: '1',
-  email: 'demo@example.com',
-  firstName: 'Demo',
-  lastName: 'User',
-  createdAt: '2024-01-01T00:00:00Z',
-  updatedAt: '2024-01-01T00:00:00Z',
-};
+import { 
+  MainLayout, 
+  Section, 
+  Breadcrumbs, 
+  ProtectedRoute 
+} from './components/common';
+import { LoginPage, RegisterPage } from './pages';
+import { useAuth } from './hooks';
 
 function App() {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [user, setUser] = useState<User | null>(null);
-
-  const handleLogin = () => {
-    setIsAuthenticated(true);
-    setUser(mockUser);
-  };
-
-  const handleLogout = () => {
-    setIsAuthenticated(false);
-    setUser(null);
-  };
-
+  const { isInitialized, verify } = useAuth();
+  
+  useEffect(() => {
+    // Initialize auth state on app load
+    if (!isInitialized) {
+      verify();
+    }
+  }, [isInitialized, verify]);
+  
+  // Show loading until auth is initialized
+  if (!isInitialized) {
+    return <div>Loading...</div>;
+  }
+  
   return (
     <Routes>
-      {/* Authentication routes */}
-      <Route 
-        path="/login" 
-        element={
-          <AuthLayout 
-            title="Welcome Back" 
-            subtitle="Sign in to continue your reading journey"
-            footerText={
-              <>
-                Don't have an account?{' '}
-                <Button variant="text" size="small" href="/register">
-                  Sign up here
-                </Button>
-              </>
-            }
-          >
-            <Box sx={{ textAlign: 'center', py: 3 }}>
-              <Typography variant="body1" color="text.secondary" gutterBottom>
-                Login form would go here
-              </Typography>
-              <Button 
-                variant="contained" 
-                color="primary" 
-                onClick={handleLogin}
-                sx={{ mt: 2 }}
-              >
-                Demo Login
-              </Button>
-            </Box>
-          </AuthLayout>
-        } 
-      />
-      <Route 
-        path="/register" 
-        element={
-          <AuthLayout 
-            title="Join BookReview" 
-            subtitle="Create an account to start reviewing and discovering books"
-            footerText={
-              <>
-                Already have an account?{' '}
-                <Button variant="text" size="small" href="/login">
-                  Sign in here
-                </Button>
-              </>
-            }
-          >
-            <Box sx={{ textAlign: 'center', py: 3 }}>
-              <Typography variant="body1" color="text.secondary">
-                Registration form would go here
-              </Typography>
-            </Box>
-          </AuthLayout>
-        } 
-      />
+        {/* Guest routes - redirect to home if authenticated */}
+        <Route 
+          path="/login" 
+          element={
+            <ProtectedRoute requireAuth={false} requireGuest={true}>
+              <LoginPage />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/register" 
+          element={
+            <ProtectedRoute requireAuth={false} requireGuest={true}>
+              <RegisterPage />
+            </ProtectedRoute>
+          } 
+        />
 
-      {/* Main application routes */}
-      <Route 
-        path="/*" 
-        element={
-          <MainLayout
-            isAuthenticated={isAuthenticated}
-            user={user}
-            onLogout={handleLogout}
-          >
-            <Routes>
-              <Route path="/" element={<HomePage isAuthenticated={isAuthenticated} />} />
-              <Route path="/books" element={<BooksPage />} />
-              <Route path="/my-reviews" element={<MyReviewsPage />} />
-              <Route path="/favorites" element={<FavoritesPage />} />
-              <Route path="/profile" element={<ProfilePage />} />
-              <Route path="/settings" element={<SettingsPage />} />
-              {/* Add more routes as needed */}
-            </Routes>
-          </MainLayout>
-        } 
-      />
-    </Routes>
+        {/* Protected routes - require authentication */}
+        <Route 
+          path="/my-reviews" 
+          element={
+            <ProtectedRoute requireAuth={true}>
+              <MainLayout>
+                <MyReviewsPage />
+              </MainLayout>
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/favorites" 
+          element={
+            <ProtectedRoute requireAuth={true}>
+              <MainLayout>
+                <FavoritesPage />
+              </MainLayout>
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/profile" 
+          element={
+            <ProtectedRoute requireAuth={true}>
+              <MainLayout>
+                <ProfilePage />
+              </MainLayout>
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/settings" 
+          element={
+            <ProtectedRoute requireAuth={true}>
+              <MainLayout>
+                <SettingsPage />
+              </MainLayout>
+            </ProtectedRoute>
+          } 
+        />
+
+        {/* Public routes - accessible to everyone */}
+        <Route 
+          path="/" 
+          element={
+            <MainLayout>
+              <HomePage />
+            </MainLayout>
+          } 
+        />
+        <Route 
+          path="/books" 
+          element={
+            <MainLayout>
+              <BooksPage />
+            </MainLayout>
+          } 
+        />
+
+        {/* Catch all route */}
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
   );
 }
 
 // Home Page Component
-const HomePage: React.FC<{ isAuthenticated: boolean }> = ({ isAuthenticated }) => {
+const HomePage: React.FC = () => {
+  const { isAuthenticated } = useAuth();
+
   const stats = [
     { label: 'Books', value: '10,234', icon: AutoStoriesIcon, color: 'primary' },
     { label: 'Reviews', value: '45,123', icon: RateReviewIcon, color: 'secondary' },
@@ -200,8 +201,6 @@ const HomePage: React.FC<{ isAuthenticated: boolean }> = ({ isAuthenticated }) =
             </Grid>
           ))}
         </Grid>
-
-        <ReduxTest />
 
         <Box sx={{ textAlign: 'center' }}>
           <Typography variant="h5" gutterBottom>

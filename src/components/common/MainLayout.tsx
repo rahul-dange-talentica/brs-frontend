@@ -6,9 +6,9 @@ import { User } from '../../types/common';
 
 interface MainLayoutProps {
   children: React.ReactNode;
-  isAuthenticated: boolean;
+  isAuthenticated?: boolean;
   user?: User | null;
-  onLogout: () => void;
+  onLogout?: () => void;
   maxWidth?: 'xs' | 'sm' | 'md' | 'lg' | 'xl' | false;
   disableGutters?: boolean;
   sx?: object;

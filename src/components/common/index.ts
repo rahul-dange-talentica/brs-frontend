@@ -21,3 +21,7 @@ export { default as Breadcrumbs } from './Breadcrumbs';
 // Utility Components
 export { default as Container } from './Container';
 export { default as Section } from './Section';
+
+// Authentication Components
+export { ProtectedRoute } from './ProtectedRoute';
+export { AuthGuard } from './AuthGuard';

@@ -33,11 +33,13 @@ import {
 } from '@mui/icons-material';
 import { Link, useLocation } from 'react-router-dom';
 import { NavigationItem, User, UserMenuItem } from '../../types/common';
+import { useAuth } from '../../hooks';
 
 interface HeaderProps {
-  isAuthenticated: boolean;
+  // Props are now optional since we use Redux state
+  isAuthenticated?: boolean;
   user?: User | null;
-  onLogout: () => void;
+  onLogout?: () => void;
 }
 
 // Navigation items for authenticated users
@@ -62,10 +64,16 @@ const userMenuItems: UserMenuItem[] = [
 ];
 
 export const Header: React.FC<HeaderProps> = ({
-  isAuthenticated,
-  user,
-  onLogout,
+  isAuthenticated: propIsAuthenticated,
+  user: propUser,
+  onLogout: propOnLogout,
 }) => {
+  const auth = useAuth();
+  
+  // Use Redux state with fallback to props for backward compatibility
+  const isAuthenticated = propIsAuthenticated ?? auth.isAuthenticated;
+  const user = propUser ?? auth.user;
+  const onLogout = propOnLogout ?? auth.logout;
   const theme = useTheme();
   const location = useLocation();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
@@ -83,9 +91,9 @@ export const Header: React.FC<HeaderProps> = ({
     setAnchorEl(null);
   };
 
-  const handleUserMenuItemClick = (item: UserMenuItem) => {
+  const handleUserMenuItemClick = async (item: UserMenuItem) => {
     if (item.action === 'logout') {
-      onLogout();
+      await onLogout();
     }
     handleUserMenuClose();
   };
@@ -149,7 +157,7 @@ export const Header: React.FC<HeaderProps> = ({
               <Avatar src={user.avatar} sx={{ width: 32, height: 32 }} />
             ) : (
               <Avatar sx={{ width: 32, height: 32, bgcolor: 'secondary.main' }}>
-                {user.firstName.charAt(0).toUpperCase()}
+                {auth.getUserInitials()}
               </Avatar>
             )}
           </IconButton>
@@ -177,11 +185,11 @@ export const Header: React.FC<HeaderProps> = ({
           >
             <MenuItem disabled>
               <Avatar sx={{ bgcolor: 'secondary.main' }}>
-                {user.firstName.charAt(0).toUpperCase()}
+                {auth.getUserInitials()}
               </Avatar>
               <Box>
                 <Typography variant="body2" fontWeight={500}>
-                  {user.firstName} {user.lastName}
+                  {auth.getUserDisplayName()}
                 </Typography>
                 <Typography variant="caption" color="text.secondary">
                   {user.email}
@@ -279,11 +287,11 @@ export const Header: React.FC<HeaderProps> = ({
           <Box sx={{ p: 2 }}>
             <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
               <Avatar sx={{ bgcolor: 'secondary.main', mr: 2 }}>
-                {user.firstName.charAt(0).toUpperCase()}
+                {auth.getUserInitials()}
               </Avatar>
               <Box>
                 <Typography variant="body2" fontWeight={500}>
-                  {user.firstName} {user.lastName}
+                  {auth.getUserDisplayName()}
                 </Typography>
                 <Typography variant="caption" color="text.secondary">
                   {user.email}
@@ -295,8 +303,8 @@ export const Header: React.FC<HeaderProps> = ({
             {userMenuItems.map((item) => (
               <ListItemButton
                 key={item.label}
-                onClick={() => {
-                  handleUserMenuItemClick(item);
+                onClick={async () => {
+                  await handleUserMenuItemClick(item);
                   closeMobileMenu();
                 }}
                 component={item.path ? Link : 'div'}
