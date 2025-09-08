@@ -40,15 +40,38 @@ export default defineConfig({
   },
   build: {
     outDir: 'dist',
-    sourcemap: false,
+    sourcemap: false, // Disable source maps for production
+    minify: 'terser',
     rollupOptions: {
       output: {
         manualChunks: {
           vendor: ['react', 'react-dom'],
-          mui: ['@mui/material', '@mui/icons-material'],
-          redux: ['@reduxjs/toolkit', 'react-redux']
-        }
+          mui: ['@mui/material', '@mui/icons-material', '@mui/lab'],
+          redux: ['@reduxjs/toolkit', 'react-redux'],
+          routing: ['react-router-dom'],
+          forms: ['react-hook-form', '@hookform/resolvers', 'yup'],
+          utils: ['axios', 'date-fns']
+        },
+        assetFileNames: 'assets/[name].[hash][extname]',
+        chunkFileNames: 'assets/[name].[hash].js',
+        entryFileNames: 'assets/[name].[hash].js',
       }
+    },
+    terserOptions: {
+      compress: {
+        drop_console: true, // Remove console.log in production
+        drop_debugger: true,
+      },
+    },
+    chunkSizeWarningLimit: 1000,
+    // Enable CSS code splitting
+    cssCodeSplit: true,
+    emptyOutDir: true,
+  },
+  // Enable CSS preprocessing optimization
+  css: {
+    modules: {
+      localsConvention: 'camelCase'
     }
   }
 })

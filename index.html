@@ -4,13 +4,50 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    
+    <!-- Enhanced Content Security Policy for Production -->
     <meta http-equiv="Content-Security-Policy" 
           content="default-src 'self'; 
-                   script-src 'self' 'unsafe-inline'; 
-                   style-src 'self' 'unsafe-inline' fonts.googleapis.com; 
-                   font-src 'self' fonts.gstatic.com; 
-                   img-src 'self' data: https:; 
-                   connect-src 'self' http://34.192.2.109;">
+                   script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://unpkg.com; 
+                   style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; 
+                   font-src 'self' https://fonts.gstatic.com; 
+                   img-src 'self' data: https: blob:; 
+                   connect-src 'self' http://34.192.2.109 http://18.233.174.25 https://api.bookreviews.com ws: wss:;
+                   frame-ancestors 'none';
+                   base-uri 'self';
+                   form-action 'self';
+                   object-src 'none';">
+    
+    <!-- Security Headers -->
+    <meta http-equiv="X-Content-Type-Options" content="nosniff">
+    <meta http-equiv="X-Frame-Options" content="DENY">
+    <meta http-equiv="X-XSS-Protection" content="1; mode=block">
+    <meta http-equiv="Referrer-Policy" content="strict-origin-when-cross-origin">
+    <meta http-equiv="Permissions-Policy" content="camera=(), microphone=(), geolocation=()">
+    
+    <!-- SEO and Meta Information -->
+    <meta name="description" content="Discover, review, and rate your favorite books. Join our community of book lovers and find your next great read.">
+    <meta name="keywords" content="books, reviews, ratings, reading, literature, recommendations">
+    <meta name="author" content="Book Review Platform">
+    <meta name="theme-color" content="#1976d2">
+    
+    <!-- Open Graph Meta Tags -->
+    <meta property="og:title" content="Book Review Platform">
+    <meta property="og:description" content="Discover, review, and rate your favorite books">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://bookreviews.com">
+    <meta property="og:image" content="/og-image.jpg">
+    
+    <!-- Twitter Card Meta Tags -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Book Review Platform">
+    <meta name="twitter:description" content="Discover, review, and rate your favorite books">
+    <meta name="twitter:image" content="/twitter-image.jpg">
+    
+    <!-- Preconnect to external domains for performance -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    
     <title>Book Review Platform</title>
   </head>
   <body>

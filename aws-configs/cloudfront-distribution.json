@@ -1,0 +1,65 @@
+{
+  "CallerReference": "brs-frontend-distribution-2025",
+  "Comment": "Book Review Platform Frontend CDN",
+  "DefaultRootObject": "index.html",
+  "Origins": [
+    {
+      "Id": "S3-brs-frontend-bucket",
+      "DomainName": "brs-frontend-bucket.s3.amazonaws.com",
+      "S3OriginConfig": {
+        "OriginAccessIdentity": ""
+      }
+    }
+  ],
+  "DefaultCacheBehavior": {
+    "TargetOriginId": "S3-brs-frontend-bucket",
+    "ViewerProtocolPolicy": "redirect-to-https",
+    "Compress": true,
+    "ForwardedValues": {
+      "QueryString": false,
+      "Cookies": {
+        "Forward": "none"
+      }
+    },
+    "TrustedSigners": {
+      "Enabled": false,
+      "Quantity": 0
+    },
+    "MinTTL": 0,
+    "DefaultTTL": 86400,
+    "MaxTTL": 31536000
+  },
+  "CacheBehaviors": [
+    {
+      "PathPattern": "/assets/*",
+      "TargetOriginId": "S3-brs-frontend-bucket",
+      "ViewerProtocolPolicy": "redirect-to-https",
+      "Compress": true,
+      "ForwardedValues": {
+        "QueryString": false,
+        "Cookies": {
+          "Forward": "none"
+        }
+      },
+      "MinTTL": 31536000,
+      "DefaultTTL": 31536000,
+      "MaxTTL": 31536000
+    }
+  ],
+  "CustomErrorResponses": [
+    {
+      "ErrorCode": 403,
+      "ResponseCode": 200,
+      "ResponsePagePath": "/index.html",
+      "ErrorCachingMinTTL": 300
+    },
+    {
+      "ErrorCode": 404,
+      "ResponseCode": 200,
+      "ResponsePagePath": "/index.html",
+      "ErrorCachingMinTTL": 300
+    }
+  ],
+  "Enabled": true,
+  "PriceClass": "PriceClass_100"
+}

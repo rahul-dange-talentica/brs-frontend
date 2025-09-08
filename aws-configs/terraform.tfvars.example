@@ -1,0 +1,41 @@
+# Example Terraform variables file for Book Review Platform
+# Copy this file to terraform.tfvars and customize the values
+
+# Basic Configuration
+aws_region    = "us-east-1"
+environment   = "prod"
+project_name  = "brs-frontend"
+
+# S3 Configuration
+s3_bucket_name        = "brs-frontend-bucket"
+backup_retention_days = 30
+
+# CloudFront Configuration
+cloudfront_price_class = "PriceClass_100"  # Most cost-effective, covers US/Canada/Europe
+
+# Custom Domain Configuration (Optional)
+# Uncomment and configure if you want to use a custom domain
+# domain_name          = "bookreviews.yourdomain.com"
+# domain_aliases       = ["bookreviews.yourdomain.com", "www.bookreviews.yourdomain.com"]
+# ssl_certificate_arn  = "arn:aws:acm:us-east-1:123456789012:certificate/abcd1234-..."
+
+# Route53 Configuration (Optional)
+# Set to true if you want Terraform to manage DNS
+# create_route53_zone   = false
+# create_route53_record = false
+# existing_zone_id      = "Z1234567890ABC"  # If you have existing hosted zone
+
+# Origin Access Control
+create_oac = true
+# existing_oac_id = "E1234567890ABC"  # If you want to use existing OAC
+
+# Monitoring and Logging
+enable_logging      = true
+log_retention_days  = 14
+
+# Additional Tags
+additional_tags = {
+  Owner       = "DevTeam"
+  CostCenter  = "Engineering"
+  Backup      = "Required"
+}

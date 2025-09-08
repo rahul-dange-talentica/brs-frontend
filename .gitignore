@@ -137,6 +137,20 @@ temp/
 
 # AWS deployment
 .aws/
+.bucket-name
+
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+terraform.tfvars
+# Keep .terraform.lock.hcl for reproducible builds
+!.terraform.lock.hcl
+
+# Deployment artifacts
+deploy-logs/
+backup-*/
 
 # Storybook build outputs
 storybook-static
