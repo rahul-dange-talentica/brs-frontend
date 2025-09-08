@@ -19,12 +19,10 @@ interface BookGridProps {
   books: BookDisplay[];
   loading?: boolean;
   onBookClick?: (book: BookDisplay) => void;
-  onFavoriteClick?: (bookId: string) => void;
   onShareClick?: (book: BookDisplay) => void;
   showFavorites?: boolean;
   showGenres?: boolean;
   variant?: 'compact' | 'detailed';
-  favoriteBooks?: string[];
   emptyMessage?: string;
   maxWidth?: false | 'xs' | 'sm' | 'md' | 'lg' | 'xl';
 }
@@ -52,12 +50,10 @@ export const BookGrid: React.FC<BookGridProps> = ({
   books,
   loading = false,
   onBookClick,
-  onFavoriteClick,
   onShareClick,
   showFavorites = false,
   showGenres = false,
   variant = 'compact',
-  favoriteBooks = [],
   emptyMessage = 'No books found',
   maxWidth = 'lg'
 }) => {

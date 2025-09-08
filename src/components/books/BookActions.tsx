@@ -24,7 +24,6 @@ import {
 } from '@mui/icons-material';
 import { FavoriteButton } from '@/components/user';
 import { BookDisplay } from '@/types';
-import { useAuth } from '@/hooks/useAuth';
 
 interface BookActionsProps {
   book: BookDisplay;

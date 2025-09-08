@@ -10,8 +10,6 @@ import {
   Typography,
   Grid,
   Alert,
-  Paper,
-  Divider,
   Button,
   Card,
   CardContent,
@@ -21,7 +19,6 @@ import {
 } from '@mui/material';
 import {
   Edit as EditIcon,
-  Person as PersonIcon,
   Email as EmailIcon,
   DateRange as DateIcon,
   Settings as SettingsIcon,

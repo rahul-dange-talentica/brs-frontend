@@ -21,7 +21,7 @@ export default defineConfig({
     open: true,
     proxy: {
       '/api': {
-        target: 'http://34.192.2.109',
+        target: 'http://18.233.174.25',
         changeOrigin: true,
         secure: false,
         configure: (proxy, _options) => {

@@ -4,7 +4,7 @@
  */
 
 export const API_CONFIG = {
-  BASE_URL: import.meta.env.DEV ? '' : (import.meta.env.VITE_API_BASE_URL || 'http://34.192.2.109'),
+  BASE_URL: import.meta.env.DEV ? '' : (import.meta.env.VITE_API_BASE_URL || 'http://18.233.174.25'),
   TIMEOUT: 10000,
   RETRY_ATTEMPTS: 3,
   POLLING_INTERVAL: parseInt(import.meta.env.VITE_POLLING_INTERVAL as string) || 30000,

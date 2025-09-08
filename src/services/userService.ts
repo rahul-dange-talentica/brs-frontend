@@ -11,7 +11,6 @@ import {
   FavoriteResponse,
   UserFavoritesResponse,
   UserReviewsResponse,
-  UserProfile,
 } from '@/types/api';
 
 /**
@@ -64,7 +63,7 @@ export const userService = {
    */
   addToFavorites: async (bookId: string): Promise<FavoriteResponse> => {
     return retryRequest(async () => {
-      const response = await apiClient.post(
+      await apiClient.post(
         `${API_CONFIG.ENDPOINTS.USERS.FAVORITES}/${bookId}`,
         {}
       );
@@ -82,7 +81,7 @@ export const userService = {
    */
   removeFromFavorites: async (bookId: string): Promise<FavoriteResponse> => {
     return retryRequest(async () => {
-      const response = await apiClient.delete(
+      await apiClient.delete(
         `${API_CONFIG.ENDPOINTS.USERS.FAVORITES}/${bookId}`
       );
       
@@ -115,6 +114,7 @@ export const userService = {
         success: true,
         books: response.data.favorites,
         total: response.data.total,
+        totalFavorites: response.data.total,
         skip: response.data.skip,
         limit: response.data.limit,
         pages: response.data.pages

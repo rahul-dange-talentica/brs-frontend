@@ -4,6 +4,7 @@ import booksReducer from './booksSlice';
 import reviewsReducer from './reviewsSlice';
 import userReducer from './userSlice';
 import uiReducer from './uiSlice';
+import searchReducer from './searchSlice';
 
 export const store = configureStore({
   reducer: {
@@ -12,6 +13,7 @@ export const store = configureStore({
     reviews: reviewsReducer,
     user: userReducer,
     ui: uiReducer,
+    search: searchReducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({

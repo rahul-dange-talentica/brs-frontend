@@ -25,7 +25,7 @@ import { useNavigate } from 'react-router-dom';
 import { Book } from '@/types/api';
 import { FavoriteButton } from './FavoriteButton';
 import { BookCover } from '@/components/books';
-import { getBookCoverImage } from '@/utils/bookTransformers';
+import { getBookCoverImage, transformBookForDisplay } from '@/utils/bookTransformers';
 
 interface FavoritesListProps {
   books: Book[];
@@ -60,7 +60,8 @@ const FavoriteBookCard: React.FC<FavoriteBookCardProps> = ({
   };
 
   const rating = parseFloat(book.average_rating) || 0;
-  const coverImageSrc = getBookCoverImage(book);
+  const bookDisplay = transformBookForDisplay(book);
+  const coverImageSrc = getBookCoverImage(bookDisplay);
 
   if (compact) {
     return (

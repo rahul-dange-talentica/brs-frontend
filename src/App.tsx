@@ -14,7 +14,8 @@ import {
   HomePage as HomePageComponent, 
   BooksPage as BooksPageComponent, 
   BookDetailsPage,
-  UserReviewsPage 
+  UserReviewsPage,
+  SearchPage
 } from './pages';
 import { 
   UserProfilePage,
@@ -186,6 +187,14 @@ function App() {
           element={
             <MainLayout>
               <HomePageComponent />
+            </MainLayout>
+          } 
+        />
+        <Route 
+          path="/search" 
+          element={
+            <MainLayout>
+              <SearchPage />
             </MainLayout>
           } 
         />

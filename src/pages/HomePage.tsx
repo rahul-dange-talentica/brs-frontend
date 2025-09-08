@@ -31,7 +31,6 @@ import {
   addToFavorites, 
   removeFromFavorites, 
   fetchFavoriteBooks,
-  selectFavoriteBooks 
 } from '@/store/userSlice';
 import { BookDisplay } from '@/types';
 import { transformBooksForDisplay } from '@/utils/bookTransformers';
@@ -51,7 +50,6 @@ export const HomePage: React.FC = () => {
   const popularBooksLoading = useAppSelector(selectPopularBooksLoading);
   const trendingBooksLoading = useAppSelector(selectTrendingBooksLoading);
   const personalRecommendationsLoading = useAppSelector(selectPersonalRecommendationsLoading);
-  const favoriteBooks = useAppSelector(selectFavoriteBooks);
 
   const [displayedPopularBooks, setDisplayedPopularBooks] = useState<BookDisplay[]>([]);
   const [displayedTrendingBooks, setDisplayedTrendingBooks] = useState<BookDisplay[]>([]);
@@ -103,8 +101,6 @@ export const HomePage: React.FC = () => {
     navigate('/books');
   };
 
-  // Get favorite book IDs for easy lookup
-  const favoriteBookIds = favoriteBooks.map(book => book.id);
 
   return (
     <Container maxWidth="xl" sx={{ py: 4 }}>
@@ -166,7 +162,6 @@ export const HomePage: React.FC = () => {
               loading={personalRecommendationsLoading}
               onBookClick={handleBookClick}
               onFavoriteClick={handleFavoriteToggle}
-              favoriteBookIds={favoriteBookIds}
               variant="compact"
               showGenres
               showFavorites={isAuthenticated}
@@ -199,7 +194,6 @@ export const HomePage: React.FC = () => {
           loading={popularBooksLoading}
           onBookClick={handleBookClick}
           onFavoriteClick={handleFavoriteToggle}
-          favoriteBookIds={favoriteBookIds}
           variant="compact"
           showGenres
           showFavorites={isAuthenticated}
@@ -231,7 +225,6 @@ export const HomePage: React.FC = () => {
           loading={trendingBooksLoading}
           onBookClick={handleBookClick}
           onFavoriteClick={handleFavoriteToggle}
-          favoriteBookIds={favoriteBookIds}
           variant="compact"
           showGenres
           showFavorites={isAuthenticated}

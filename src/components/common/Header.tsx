@@ -24,6 +24,7 @@ import {
   Close as CloseIcon,
   Home as HomeIcon,
   LibraryBooks as LibraryBooksIcon,
+  Search as SearchIcon,
   RateReview as RateReviewIcon,
   Favorite as FavoriteIcon,
   Person as PersonIcon,
@@ -45,6 +46,7 @@ interface HeaderProps {
 // Navigation items for authenticated users
 const authenticatedNavItems: NavigationItem[] = [
   { label: 'Home', path: '/', icon: HomeIcon, exact: true },
+  { label: 'Search', path: '/search', icon: SearchIcon },
   { label: 'Browse Books', path: '/books', icon: LibraryBooksIcon },
   { label: 'My Reviews', path: '/my-reviews', icon: RateReviewIcon, requiresAuth: true },
   { label: 'Favorites', path: '/favorites', icon: FavoriteIcon, requiresAuth: true },
@@ -53,6 +55,7 @@ const authenticatedNavItems: NavigationItem[] = [
 // Navigation items for guest users
 const guestNavItems: NavigationItem[] = [
   { label: 'Home', path: '/', icon: HomeIcon, exact: true },
+  { label: 'Search', path: '/search', icon: SearchIcon },
   { label: 'Browse Books', path: '/books', icon: LibraryBooksIcon },
 ];
 

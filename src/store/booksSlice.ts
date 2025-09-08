@@ -11,15 +11,32 @@ interface BooksState {
   popularBooks: Book[];
   trendingBooks: Book[];
   personalRecommendations: Book[];
+  genreBasedRecommendations: Book[];
+  similarBooks: Book[];
+  diverseRecommendations: Book[];
   loading: boolean;
   searchLoading: boolean;
   popularBooksLoading: boolean;
   trendingBooksLoading: boolean;
   personalRecommendationsLoading: boolean;
+  genreBasedRecommendationsLoading: boolean;
+  similarBooksLoading: boolean;
+  diverseRecommendationsLoading: boolean;
   error: string | null;
   pagination: PaginationState | null;
   searchFilters: SearchFilters;
   featuredBooks: Book[];
+  // Recommendation metadata
+  recommendationsLastUpdated: {
+    popular: string | null;
+    trending: string | null;
+    personal: string | null;
+    genreBased: string | null;
+    similar: string | null;
+    diverse: string | null;
+  };
+  recommendationGenre: string | null;
+  similarToBookId: string | null;
 }
 
 const initialState: BooksState = {
@@ -29,11 +46,17 @@ const initialState: BooksState = {
   popularBooks: [],
   trendingBooks: [],
   personalRecommendations: [],
+  genreBasedRecommendations: [],
+  similarBooks: [],
+  diverseRecommendations: [],
   loading: false,
   searchLoading: false,
   popularBooksLoading: false,
   trendingBooksLoading: false,
   personalRecommendationsLoading: false,
+  genreBasedRecommendationsLoading: false,
+  similarBooksLoading: false,
+  diverseRecommendationsLoading: false,
   error: null,
   pagination: null,
   searchFilters: {
@@ -42,6 +65,16 @@ const initialState: BooksState = {
     sortOrder: 'asc',
   },
   featuredBooks: [],
+  recommendationsLastUpdated: {
+    popular: null,
+    trending: null,
+    personal: null,
+    genreBased: null,
+    similar: null,
+    diverse: null,
+  },
+  recommendationGenre: null,
+  similarToBookId: null,
 };
 
 
@@ -239,6 +272,89 @@ export const fetchFeaturedBooks = createAsyncThunk<
   }
 });
 
+export const fetchGenreBasedRecommendations = createAsyncThunk<
+  Book[],
+  { genreId: string; limit?: number },
+  { rejectValue: ApiError }
+>('books/fetchGenreBasedRecommendations', async ({ genreId, limit = 12 }, { rejectWithValue }) => {
+  try {
+    const response = await booksService.getGenreBasedRecommendations(genreId, limit);
+    
+    return response.recommendations;
+  } catch (error: any) {
+    if (error instanceof AxiosError) {
+      return rejectWithValue({
+        message: handleAPIError(error),
+        status: error.response?.status || 500,
+      });
+    }
+    return rejectWithValue({
+      message: error.message || 'Failed to fetch genre-based recommendations',
+      status: 500,
+    });
+  }
+});
+
+export const fetchSimilarBooks = createAsyncThunk<
+  Book[],
+  { bookId: string; limit?: number },
+  { rejectValue: ApiError }
+>('books/fetchSimilarBooks', async ({ bookId, limit = 8 }, { rejectWithValue }) => {
+  try {
+    // For similar books, we'll use genre-based recommendations for the current book's genre
+    // First get the book details to get its genre
+    const bookDetails = await booksService.getBookById(bookId);
+    
+    if (bookDetails.genres && bookDetails.genres.length > 0) {
+      const primaryGenre = bookDetails.genres[0];
+      const response = await booksService.getGenreBasedRecommendations(primaryGenre.id, limit + 5);
+      
+      // Filter out the current book from recommendations
+      const similarBooks = response.recommendations.filter(book => book.id !== bookId);
+      
+      return similarBooks.slice(0, limit);
+    }
+    
+    // Fallback to popular books if no genres found
+    const response = await booksService.getPopularBooks(limit);
+    return response.recommendations.filter(book => book.id !== bookId).slice(0, limit);
+  } catch (error: any) {
+    if (error instanceof AxiosError) {
+      return rejectWithValue({
+        message: handleAPIError(error),
+        status: error.response?.status || 500,
+      });
+    }
+    return rejectWithValue({
+      message: error.message || 'Failed to fetch similar books',
+      status: 500,
+    });
+  }
+});
+
+export const fetchDiverseRecommendations = createAsyncThunk<
+  Book[],
+  { limit?: number; genreCount?: number },
+  { rejectValue: ApiError }
+>('books/fetchDiverseRecommendations', async ({ limit = 15, genreCount = 5 }, { rejectWithValue }) => {
+  try {
+    const response = await booksService.getDiverseRecommendations(limit, genreCount);
+    
+    return response.recommendations;
+  } catch (error: any) {
+    if (error instanceof AxiosError) {
+      return rejectWithValue({
+        message: handleAPIError(error),
+        status: error.response?.status || 500,
+      });
+    }
+    return rejectWithValue({
+      message: error.message || 'Failed to fetch diverse recommendations',
+      status: 500,
+    });
+  }
+});
+
 const booksSlice = createSlice({
   name: 'books',
   initialState,
@@ -255,6 +371,28 @@ const booksSlice = createSlice({
     },
     clearError: (state) => {
       state.error = null;
+    },
+    setRecommendationGenre: (state, action: PayloadAction<string | null>) => {
+      state.recommendationGenre = action.payload;
+    },
+    setSimilarToBookId: (state, action: PayloadAction<string | null>) => {
+      state.similarToBookId = action.payload;
+    },
+    clearRecommendations: (state) => {
+      state.popularBooks = [];
+      state.trendingBooks = [];
+      state.personalRecommendations = [];
+      state.genreBasedRecommendations = [];
+      state.similarBooks = [];
+      state.diverseRecommendations = [];
+      state.recommendationsLastUpdated = {
+        popular: null,
+        trending: null,
+        personal: null,
+        genreBased: null,
+        similar: null,
+        diverse: null,
+      };
     },
     updateBookRating: (state, action: PayloadAction<{ bookId: string; averageRating: number; totalReviews: number }>) => {
       const { bookId, averageRating, totalReviews } = action.payload;
@@ -305,6 +443,27 @@ const booksSlice = createSlice({
       if (featuredIndex !== -1) {
         state.featuredBooks[featuredIndex].average_rating = averageRating.toString();
         state.featuredBooks[featuredIndex].total_reviews = totalReviews;
+      }
+      
+      // Update genre-based recommendations
+      const genreBasedIndex = state.genreBasedRecommendations.findIndex(book => book.id === bookId);
+      if (genreBasedIndex !== -1) {
+        state.genreBasedRecommendations[genreBasedIndex].average_rating = averageRating.toString();
+        state.genreBasedRecommendations[genreBasedIndex].total_reviews = totalReviews;
+      }
+      
+      // Update similar books
+      const similarIndex = state.similarBooks.findIndex(book => book.id === bookId);
+      if (similarIndex !== -1) {
+        state.similarBooks[similarIndex].average_rating = averageRating.toString();
+        state.similarBooks[similarIndex].total_reviews = totalReviews;
+      }
+      
+      // Update diverse recommendations
+      const diverseIndex = state.diverseRecommendations.findIndex(book => book.id === bookId);
+      if (diverseIndex !== -1) {
+        state.diverseRecommendations[diverseIndex].average_rating = averageRating.toString();
+        state.diverseRecommendations[diverseIndex].total_reviews = totalReviews;
       }
     },
   },
@@ -401,6 +560,45 @@ const booksSlice = createSlice({
       .addCase(fetchFeaturedBooks.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload?.message || 'Failed to fetch featured books';
+      })
+      // Fetch genre-based recommendations cases
+      .addCase(fetchGenreBasedRecommendations.pending, (state) => {
+        state.genreBasedRecommendationsLoading = true;
+      })
+      .addCase(fetchGenreBasedRecommendations.fulfilled, (state, action) => {
+        state.genreBasedRecommendationsLoading = false;
+        state.genreBasedRecommendations = action.payload;
+        state.recommendationsLastUpdated.genreBased = new Date().toISOString();
+      })
+      .addCase(fetchGenreBasedRecommendations.rejected, (state, action) => {
+        state.genreBasedRecommendationsLoading = false;
+        state.error = action.payload?.message || 'Failed to fetch genre-based recommendations';
+      })
+      // Fetch similar books cases
+      .addCase(fetchSimilarBooks.pending, (state) => {
+        state.similarBooksLoading = true;
+      })
+      .addCase(fetchSimilarBooks.fulfilled, (state, action) => {
+        state.similarBooksLoading = false;
+        state.similarBooks = action.payload;
+        state.recommendationsLastUpdated.similar = new Date().toISOString();
+      })
+      .addCase(fetchSimilarBooks.rejected, (state, action) => {
+        state.similarBooksLoading = false;
+        state.error = action.payload?.message || 'Failed to fetch similar books';
+      })
+      // Fetch diverse recommendations cases
+      .addCase(fetchDiverseRecommendations.pending, (state) => {
+        state.diverseRecommendationsLoading = true;
+      })
+      .addCase(fetchDiverseRecommendations.fulfilled, (state, action) => {
+        state.diverseRecommendationsLoading = false;
+        state.diverseRecommendations = action.payload;
+        state.recommendationsLastUpdated.diverse = new Date().toISOString();
+      })
+      .addCase(fetchDiverseRecommendations.rejected, (state, action) => {
+        state.diverseRecommendationsLoading = false;
+        state.error = action.payload?.message || 'Failed to fetch diverse recommendations';
       });
   },
 });
@@ -411,6 +609,9 @@ export const {
   clearSearchResults,
   clearError,
   updateBookRating,
+  setRecommendationGenre,
+  setSimilarToBookId,
+  clearRecommendations,
 } = booksSlice.actions;
 
 // Selectors
@@ -420,15 +621,24 @@ export const selectSearchResults = (state: { books: BooksState }) => state.books
 export const selectPopularBooks = (state: { books: BooksState }) => state.books.popularBooks;
 export const selectTrendingBooks = (state: { books: BooksState }) => state.books.trendingBooks;
 export const selectPersonalRecommendations = (state: { books: BooksState }) => state.books.personalRecommendations;
+export const selectGenreBasedRecommendations = (state: { books: BooksState }) => state.books.genreBasedRecommendations;
+export const selectSimilarBooks = (state: { books: BooksState }) => state.books.similarBooks;
+export const selectDiverseRecommendations = (state: { books: BooksState }) => state.books.diverseRecommendations;
 export const selectBooksLoading = (state: { books: BooksState }) => state.books.loading;
 export const selectSearchLoading = (state: { books: BooksState }) => state.books.searchLoading;
 export const selectPopularBooksLoading = (state: { books: BooksState }) => state.books.popularBooksLoading;
 export const selectTrendingBooksLoading = (state: { books: BooksState }) => state.books.trendingBooksLoading;
 export const selectPersonalRecommendationsLoading = (state: { books: BooksState }) => state.books.personalRecommendationsLoading;
+export const selectGenreBasedRecommendationsLoading = (state: { books: BooksState }) => state.books.genreBasedRecommendationsLoading;
+export const selectSimilarBooksLoading = (state: { books: BooksState }) => state.books.similarBooksLoading;
+export const selectDiverseRecommendationsLoading = (state: { books: BooksState }) => state.books.diverseRecommendationsLoading;
 export const selectBooksError = (state: { books: BooksState }) => state.books.error;
 export const selectBooksPagination = (state: { books: BooksState }) => state.books.pagination;
 export const selectSearchFilters = (state: { books: BooksState }) => state.books.searchFilters;
 export const selectFeaturedBooks = (state: { books: BooksState }) => state.books.featuredBooks;
+export const selectRecommendationsLastUpdated = (state: { books: BooksState }) => state.books.recommendationsLastUpdated;
+export const selectRecommendationGenre = (state: { books: BooksState }) => state.books.recommendationGenre;
+export const selectSimilarToBookId = (state: { books: BooksState }) => state.books.similarToBookId;
 
 const booksReducer = booksSlice.reducer;
 export default booksReducer;

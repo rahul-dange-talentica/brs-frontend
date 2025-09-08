@@ -14,7 +14,6 @@ interface HorizontalBookListProps {
   loading?: boolean;
   onBookClick?: (book: BookDisplay) => void;
   onFavoriteClick?: (bookId: string, isFavorite: boolean) => Promise<void>;
-  favoriteBookIds?: string[];
   variant?: 'compact' | 'detailed';
   showGenres?: boolean;
   showFavorites?: boolean;
@@ -25,8 +24,6 @@ export const HorizontalBookList: React.FC<HorizontalBookListProps> = ({
   books,
   loading = false,
   onBookClick,
-  onFavoriteClick,
-  favoriteBookIds = [],
   variant = 'compact',
   showGenres = true,
   showFavorites = false,
@@ -166,7 +163,6 @@ export const HorizontalBookList: React.FC<HorizontalBookListProps> = ({
         }}
       >
         {books.map((book) => {
-          const isFavorite = favoriteBookIds.includes(book.id);
           return (
             <Box
               key={book.id}
@@ -178,8 +174,6 @@ export const HorizontalBookList: React.FC<HorizontalBookListProps> = ({
               <BookCard
                 book={book}
                 onClick={onBookClick}
-                onFavoriteClick={(bookId) => onFavoriteClick?.(bookId, false)}
-                isFavorite={isFavorite}
                 variant={variant}
                 showGenre={showGenres}
                 showFavorite={showFavorites}

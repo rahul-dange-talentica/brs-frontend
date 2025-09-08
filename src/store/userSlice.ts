@@ -140,28 +140,10 @@ export const updateUserProfile = createAsyncThunk<
       if (response.success && response.user) {
         return response.user;
       }
-      // If response is the user object directly
-      if (response.id && response.email) {
-        return response as UserProfile;
-      }
-      // If response has user data but different structure (snake_case to camelCase)
-      if (response.firstName || response.first_name) {
-        const transformedProfile: UserProfile = {
-          id: response.id,
-          email: response.email,
-          firstName: response.first_name || response.firstName || '',
-          lastName: response.last_name || response.lastName || '',
-          avatar: response.avatar || response.avatar_url,
-          bio: response.bio || '',
-          favoriteGenres: response.favorite_genres || response.favoriteGenres || [],
-          totalReviews: response.total_reviews || response.totalReviews || 0,
-          averageRating: response.average_rating || response.averageRating || 0,
-          createdAt: response.created_at || response.createdAt || '',
-          updatedAt: response.updated_at || response.updatedAt || '',
-        };
-        console.log('Transformed update profile response:', transformedProfile);
-        return transformedProfile;
-      }
+      // UpdateProfileResponse has standard structure: { success: boolean, user: UserProfile, message: string }
+      // So we should access response.user directly
+      console.log('Update profile response fallback:', response);
+      return response.user;
     }
     
     throw new Error('Invalid profile update response format');
@@ -242,8 +224,8 @@ export const fetchUserActivity = createAsyncThunk<
         id: `review-${review.id}`,
         type: 'review',
         bookId: review.bookId,
-        bookTitle: review.book?.title || 'Unknown Book',
-        bookCoverUrl: review.book?.cover_image || review.book?.coverImage,
+        bookTitle: 'Unknown Book', // TODO: Need to join with book data
+        bookCoverUrl: undefined, // TODO: Need to join with book data
         action: `Wrote a review`,
         timestamp: review.createdAt,
         details: { 
@@ -258,8 +240,8 @@ export const fetchUserActivity = createAsyncThunk<
           id: `rating-${review.id}`,
           type: 'rating',
           bookId: review.bookId,
-          bookTitle: review.book?.title || 'Unknown Book',
-          bookCoverUrl: review.book?.cover_image || review.book?.coverImage,
+          bookTitle: 'Unknown Book', // TODO: Need to join with book data
+          bookCoverUrl: undefined, // TODO: Need to join with book data
           action: `Rated ${review.rating} stars`,
           timestamp: review.createdAt,
           details: { rating: review.rating }
@@ -274,9 +256,9 @@ export const fetchUserActivity = createAsyncThunk<
         type: 'favorite',
         bookId: book.id,
         bookTitle: book.title,
-        bookCoverUrl: book.cover_image || book.coverImage,
+        bookCoverUrl: book.cover_image_url || undefined,
         action: `Added to favorites`,
-        timestamp: book.updatedAt || book.createdAt || new Date(Date.now() - index * 24 * 60 * 60 * 1000).toISOString(),
+        timestamp: book.updated_at || book.created_at || new Date(Date.now() - index * 24 * 60 * 60 * 1000).toISOString(),
         details: {}
       });
     });
@@ -317,7 +299,7 @@ export const fetchUserReviews = createAsyncThunk<
   try {
     const response = await userService.getUserReviews(page, limit);
     
-    if (response.success && response.reviews) {
+    if (response.reviews) {
       return response.reviews;
     } else {
       throw new Error('Failed to fetch user reviews');
