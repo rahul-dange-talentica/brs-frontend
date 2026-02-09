@@ -242,6 +242,12 @@ export interface Review {
     name?: string; // Combined name from backend
   };
   isOwn?: boolean; // Calculated on frontend
+  book?: {
+    id: string;
+    title: string;
+    author: string;
+    coverImage?: string | null;
+  };
 }
 
 // Review response types from API

@@ -150,10 +150,29 @@ resource "aws_s3_bucket_lifecycle_configuration" "backup" {
 
 # CloudFront distribution
 resource "aws_cloudfront_distribution" "website" {
+  # S3 Origin for static content
   origin {
     domain_name              = aws_s3_bucket.website.bucket_regional_domain_name
     origin_id                = "S3-${aws_s3_bucket.website.bucket}"
     origin_access_control_id = var.create_oac ? aws_cloudfront_origin_access_control.main[0].id : data.aws_cloudfront_origin_access_identity.main[0].id
+  }
+
+  # Backend API Origin
+  origin {
+    domain_name = var.backend_domain
+    origin_id   = "Backend-API"
+    
+    custom_origin_config {
+      http_port              = 80
+      https_port             = 443
+      origin_protocol_policy = "http-only"
+      origin_ssl_protocols   = ["TLSv1.2"]
+    }
+    
+    custom_header {
+      name  = "X-Forwarded-Host"
+      value = var.backend_domain
+    }
   }
 
   enabled             = true
@@ -184,6 +203,28 @@ resource "aws_cloudfront_distribution" "website" {
     compress               = true
 
     response_headers_policy_id = aws_cloudfront_response_headers_policy.security_headers.id
+  }
+
+  # Cache behavior for API requests - proxy to backend
+  ordered_cache_behavior {
+    path_pattern     = "/api/*"
+    allowed_methods  = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
+    cached_methods   = ["GET", "HEAD", "OPTIONS"]
+    target_origin_id = "Backend-API"
+
+    forwarded_values {
+      query_string = true
+      headers      = ["Accept", "Authorization", "Content-Type", "Origin", "Referer"]
+      cookies {
+        forward = "all"
+      }
+    }
+
+    min_ttl                = 0
+    default_ttl            = 0
+    max_ttl                = 0
+    compress               = true
+    viewer_protocol_policy = "redirect-to-https"
   }
 
   # Cache behavior for static assets

@@ -1,4 +1,5 @@
 import { useCallback, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '../store/hooks';
 import {
   loginUser,
@@ -17,6 +18,7 @@ import { LoginFormData, RegisterFormData } from '../utils/validation';
 
 export const useAuth = () => {
   const dispatch = useAppDispatch();
+  const navigate = useNavigate();
   
   // Selectors
   const auth = useAppSelector(selectAuth);
@@ -45,8 +47,13 @@ export const useAuth = () => {
 
   const logout = useCallback(async () => {
     const result = await dispatch(logoutUser());
-    return logoutUser.fulfilled.match(result);
-  }, [dispatch]);
+    const success = logoutUser.fulfilled.match(result);
+    if (success) {
+      // Redirect to homepage after successful logout
+      navigate('/');
+    }
+    return success;
+  }, [dispatch, navigate]);
 
   const verify = useCallback(async () => {
     const result = await dispatch(verifyToken());

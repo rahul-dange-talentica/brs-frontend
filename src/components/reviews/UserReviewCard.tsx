@@ -26,12 +26,11 @@ import {
 } from '@mui/icons-material';
 import { formatDistanceToNow } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
-import { Review, BookDisplay } from '@/types/api';
+import { Review } from '@/types/api';
 import { RatingDisplay } from '@/components/books';
 
 interface UserReviewCardProps {
   review: Review;
-  book?: BookDisplay; // Book information for the review
   onEdit?: (review: Review) => void;
   onDelete?: (review: Review) => void;
   onViewBook?: (bookId: string) => void;
@@ -40,7 +39,6 @@ interface UserReviewCardProps {
 
 export const UserReviewCard: React.FC<UserReviewCardProps> = ({
   review,
-  book,
   onEdit,
   onDelete,
   onViewBook,
@@ -50,6 +48,9 @@ export const UserReviewCard: React.FC<UserReviewCardProps> = ({
   const navigate = useNavigate();
   const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null);
   const menuOpen = Boolean(anchorEl);
+
+  // Extract book info from review
+  const book = review.book;
 
   const handleMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
     setAnchorEl(event.currentTarget);
@@ -73,6 +74,9 @@ export const UserReviewCard: React.FC<UserReviewCardProps> = ({
     if (book) {
       onViewBook?.(book.id);
       navigate(`/books/${book.id}`);
+    } else {
+      // Fallback to using bookId from review
+      navigate(`/books/${review.bookId}`);
     }
   };
 
@@ -99,7 +103,7 @@ export const UserReviewCard: React.FC<UserReviewCardProps> = ({
             {book && (
               <Box sx={{ mb: 2 }}>
                 <Stack direction="row" spacing={2} alignItems="center">
-                  {book.coverImage ? (
+                  {book?.coverImage ? (
                     <Avatar
                       src={book.coverImage}
                       alt={book.title}
@@ -139,10 +143,10 @@ export const UserReviewCard: React.FC<UserReviewCardProps> = ({
                         }
                       }}
                     >
-                      {book.title}
+                      {book?.title || 'Unknown Book'}
                     </Typography>
                     <Typography variant="body2" color="text.secondary">
-                      by {book.author}
+                      by {book?.author || 'Unknown Author'}
                     </Typography>
                   </Box>
                 </Stack>

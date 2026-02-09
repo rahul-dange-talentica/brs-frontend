@@ -115,6 +115,13 @@ variable "log_retention_days" {
   default     = 14
 }
 
+# Backend Configuration
+variable "backend_domain" {
+  description = "Backend API domain (without http:// or https://)"
+  type        = string
+  default     = "ec2-100-49-147-236.compute-1.amazonaws.com"
+}
+
 # Tags
 variable "additional_tags" {
   description = "Additional tags to apply to all resources"

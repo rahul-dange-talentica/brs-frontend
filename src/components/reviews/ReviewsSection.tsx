@@ -46,13 +46,6 @@ interface ReviewsSectionProps {
   bookTitle: string;
   averageRating: number;
   totalReviews: number;
-  ratingDistribution?: {
-    5: number;
-    4: number;
-    3: number;
-    2: number;
-    1: number;
-  };
 }
 
 type TabValue = 'all' | 'recent' | 'helpful' | 'highest' | 'lowest';
@@ -64,8 +57,7 @@ export const ReviewsSection: React.FC<ReviewsSectionProps> = ({
   bookId,
   bookTitle,
   averageRating,
-  totalReviews,
-  ratingDistribution = { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 }
+  totalReviews
 }) => {
   const dispatch = useAppDispatch();
   const { user, isAuthenticated } = useAppSelector((state: any) => state.auth);
@@ -85,9 +77,46 @@ export const ReviewsSection: React.FC<ReviewsSectionProps> = ({
   const [reviewToDelete, setReviewToDelete] = useState<Review | null>(null);
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState('');
+  const [ratingDistribution, setRatingDistribution] = useState({ 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 });
 
   const pageSize = 10;
   const totalPages = Math.ceil(totalReviews / pageSize);
+
+  // Fetch all reviews for rating distribution calculation
+  const fetchRatingDistribution = useCallback(async () => {
+    try {
+      const distribution = { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 };
+      const maxLimit = 100; // Backend maximum limit per request
+      let skip = 0;
+      let hasMore = true;
+      
+      // Fetch reviews in batches to calculate distribution
+      while (hasMore && skip < totalReviews) {
+        const response = await reviewsService.getBookReviews(bookId, {
+          skip,
+          limit: maxLimit
+        });
+        
+        // Count ratings from this batch
+        response.reviews.forEach((review) => {
+          const rating = Math.round(review.rating) as 1 | 2 | 3 | 4 | 5;
+          if (rating >= 1 && rating <= 5) {
+            distribution[rating]++;
+          }
+        });
+        
+        // Check if there are more reviews to fetch
+        skip += response.reviews.length;
+        hasMore = response.reviews.length === maxLimit && skip < totalReviews;
+      }
+      
+      setRatingDistribution(distribution);
+    } catch (error) {
+      console.error('Failed to fetch rating distribution:', error);
+      // Fallback: use default distribution
+      setRatingDistribution({ 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 });
+    }
+  }, [bookId, totalReviews]);
 
   // Transform reviews and mark user's own review
   // Transform reviews for display - add isOwn property
@@ -147,7 +176,8 @@ export const ReviewsSection: React.FC<ReviewsSectionProps> = ({
   useEffect(() => {
     loadReviews();
     checkUserReview();
-  }, [loadReviews, checkUserReview]);
+    fetchRatingDistribution();
+  }, [loadReviews, checkUserReview, fetchRatingDistribution]);
 
   useEffect(() => {
     if (error) {
@@ -212,6 +242,7 @@ export const ReviewsSection: React.FC<ReviewsSectionProps> = ({
         setSnackbarOpen(true);
         setUserReview(null);
         loadReviews();
+        fetchRatingDistribution(); // Refresh rating distribution
       } catch (error) {
         console.error('Failed to delete review:', error);
       }
@@ -255,8 +286,9 @@ export const ReviewsSection: React.FC<ReviewsSectionProps> = ({
       setShowWriteReview(false);
       setEditingReview(null);
       
-      // Reload reviews to ensure we have the latest data
+      // Reload reviews and rating distribution to ensure we have the latest data
       await loadReviews();
+      await fetchRatingDistribution();
     } catch (error) {
       console.error('Failed to submit review:', error);
       setSnackbarMessage('Failed to submit review. Please try again.');

@@ -1,272 +1,336 @@
-# Book Review Platform - Deployment Guide
+# Frontend Deployment Summary
 
-## Overview
+## Quick Reference
 
-This guide covers the complete deployment process for the Book Review Platform frontend to AWS S3 with CloudFront CDN.
-
-## Prerequisites
-
-### Required Tools
-- **Node.js** (v18+)
-- **AWS CLI** configured with appropriate credentials
-- **Git** for version control
-
-### AWS Permissions Required
-- S3 bucket creation and management
-- CloudFront distribution management
-- IAM permissions for deployment
-
-## Quick Start
-
-### 1. AWS Infrastructure Setup
+### Most Common Commands
 ```bash
-# Navigate to AWS configs and run setup
-npm run setup:aws
+# Full deployment (recommended)
+npm run build
+aws s3 sync dist/ s3://brs-frontend-bucket-2025/ --delete
+aws cloudfront create-invalidation --distribution-id E2N7CVOJAW1LBN --paths "/*"
+
+# Check deployment status
+aws cloudfront get-invalidation --distribution-id E2N7CVOJAW1LBN --id <INVALIDATION_ID>
+
+# View infrastructure details
+cd aws-configs && terraform output
 ```
 
-### 2. Environment Configuration
-Create environment files with your API endpoints:
-- `.env.development` (for development)
-- `.env.production` (for production)
+### Key Information
+- **Production URL**: https://d4rq1hzntu1kn.cloudfront.net
+- **S3 Bucket**: `brs-frontend-bucket-2025`
+- **CloudFront Distribution**: `E2N7CVOJAW1LBN`
+- **AWS Region**: us-east-1
 
-### 3. Deploy to Production
+---
+
+## Latest Deployment
+**Date**: February 8, 2026 - 16:15 UTC
+**Changes**: 
+- Fixed rating breakdown display for books with multiple reviews
+- Fixed rating distribution API limit (max 100 per request, now uses pagination)
+- Fixed user reviews page to display book names and cover images
+- Added logout redirect to homepage
+
+## Deployment History
+
+### February 8, 2026 - 16:15 UTC
+**Invalidation ID**: `IDM4NJXMV5D8TF70Y2Y06VJSRX`
+**Changes**:
+- Added logout redirect to homepage functionality
+
+### February 8, 2026 - 15:58 UTC
+**Invalidation ID**: `I6GZ7WCCQOAF10FPZ6K8JZQPBK`
+**Changes**:
+- Fixed rating distribution API validation error (implemented pagination for 100-item limit)
+- Fixed user reviews page to display book names and cover images
+- Extended Review interface with optional book information
+
+### February 8, 2026 - 15:46 UTC
+**Invalidation ID**: `IBVNGK77TXNGQK9UDTX698C85P`
+**Changes**:
+- Fixed rating breakdown display for books with multiple reviews
+- Implemented dynamic rating distribution calculation from actual review data
+
+### Initial Deployment
+**Invalidation ID**: `ICEZBFQRCKRRUN8S93ZOHUSORW`
+**Changes**:
+- Initial infrastructure setup and application deployment
+
+## Infrastructure Details
+
+### AWS Resources Created
+- **S3 Bucket**: `brs-frontend-bucket-2025`
+- **Backup Bucket**: `brs-frontend-bucket-2025-backup`
+- **CloudFront Distribution ID**: `E2N7CVOJAW1LBN`
+- **CloudFront Domain**: `d4rq1hzntu1kn.cloudfront.net`
+- **Origin Access Control ID**: `E11L4Q32NAO0QN`
+
+### Application URLs
+- **Production URL**: https://d4rq1hzntu1kn.cloudfront.net
+- **Backend API (via CloudFront Proxy)**: https://d4rq1hzntu1kn.cloudfront.net/api/
+- **Backend Direct Access**: http://100.49.147.236/ (ec2-100-49-147-236.compute-1.amazonaws.com)
+
+## Configuration
+
+### Backend Integration
+The frontend communicates with the backend API through CloudFront as a proxy to avoid mixed content issues (HTTPS → HTTP). 
+
+**How it works:**
+1. Frontend makes API requests to `https://d4rq1hzntu1kn.cloudfront.net/api/*`
+2. CloudFront proxies these requests to `http://ec2-100-49-147-236.compute-1.amazonaws.com/api/*`
+3. Backend responds via CloudFront over HTTPS
+4. No CORS issues (same origin) and no mixed content warnings
+
+This is set in:
+- `src/config/api.ts` - BASE_URL is empty (uses same origin)
+- `.env.production` - VITE_API_BASE_URL is empty
+- CloudFront proxies `/api/*` requests to backend server
+
+**CloudFront Origins:**
+- **S3 Origin**: Static content (HTML, JS, CSS, images)
+- **Backend Origin**: `ec2-100-49-147-236.compute-1.amazonaws.com` for `/api/*` paths
+
+### Build Configuration
+- **Build Tool**: Vite 5.4.19
+- **Bundle Size**: ~940 KB total (uncompressed)
+- **Code Splitting**: Enabled (vendor, mui, redux, routing, forms, utils)
+- **Minification**: Terser (console.log and debugger statements removed in production)
+- **Source Maps**: Disabled for production
+- **CSS Code Splitting**: Enabled
+
+**Current Bundle Breakdown** (Latest Build - Feb 8, 2026):
+- `mui.CVMMf-WT.js`: 401.22 KB (118.54 KB gzipped) - Material-UI components
+- `index.BrjI7qSm.js`: 229.56 KB (55.03 KB gzipped) - Main application code
+- `vendor.DnUwWi3l.js`: 140.33 KB (45.03 KB gzipped) - React and React-DOM
+- `forms.DJA4mR5a.js`: 63.42 KB (21.15 KB gzipped) - Form handling libraries
+- `utils.CjTsMwYb.js`: 57.10 KB (19.62 KB gzipped) - Axios and date-fns
+- `redux.CsBoUQ8d.js`: 26.08 KB (9.53 KB gzipped) - Redux Toolkit
+- `routing.B0PQ4YxW.js`: 20.90 KB (7.65 KB gzipped) - React Router
+
+## Deployment Process
+
+### 1. Infrastructure Setup (Terraform)
 ```bash
-# Full production deployment
-npm run deploy:production
-
-# Or step by step
-npm run build:production
-npm run deploy
+cd aws-configs
+terraform init
+terraform apply -auto-approve
 ```
 
-## Detailed Deployment Process
+**Resources Created:**
+- S3 buckets with versioning and encryption
+- CloudFront distribution with HTTPS
+- Security headers policy
+- Origin Access Control for S3
+- CloudWatch log group
+- Lifecycle policies for backups
 
-### Step 1: Build Optimization
-
-The production build includes several optimizations:
-
-- **Code Splitting**: Automatic chunking for better caching
-- **Tree Shaking**: Removes unused code
-- **Minification**: Compresses JavaScript and CSS
-- **Asset Optimization**: Optimizes images and fonts
-
+### 2. Frontend Build
 ```bash
-# Test production build locally
-npm run test:build
+npm run build
 ```
 
-### Step 2: AWS S3 Configuration
+**Output:**
+- Clean build directory
+- TypeScript type checking
+- Optimized production bundle
+- Asset hashing for cache busting
 
-#### S3 Bucket Setup
+### 3. Deployment to S3
 ```bash
-# Create bucket (automated in setup script)
-aws s3 mb s3://brs-frontend-bucket --region us-east-1
-
-# Enable static website hosting
-aws s3 website s3://brs-frontend-bucket --index-document index.html --error-document index.html
+aws s3 sync dist/ s3://brs-frontend-bucket-2025/ --delete
 ```
 
-#### Bucket Policy
-The bucket policy in `aws-configs/s3-bucket-policy.json` enables public read access for static assets.
+**Files Deployed:**
+- index.html (3.36 KB)
+- JavaScript bundles (assets/*.js)
+- Static assets (vite.svg)
 
-#### CORS Configuration
-CORS settings in `aws-configs/s3-cors-policy.json` allow proper API integration.
-
-### Step 3: CloudFront CDN Setup
-
-CloudFront provides:
-- **Global CDN**: Fast content delivery worldwide
-- **HTTPS**: Automatic SSL/TLS encryption
-- **Custom Error Pages**: SPA routing support
-- **Caching**: Optimized caching strategies
-
-Configuration is in `aws-configs/cloudfront-distribution.json`.
-
-### Step 4: Deployment Scripts
-
-#### Main Deployment (`deploy.sh`)
-- Installs dependencies
-- Runs linting and tests
-- Creates backup of current deployment
-- Builds production bundle
-- Uploads to S3 with proper headers
-- Invalidates CloudFront cache
-
-#### Rollback Script (`rollback.sh`)
-- Lists available backups
-- Restores from specified backup
-- Invalidates CloudFront cache
-
-## Environment Variables
-
-### Production Environment (`.env.production`)
-```env
-VITE_API_BASE_URL=http://34.192.2.109
-VITE_APP_NAME=Book Review Platform
-VITE_POLLING_INTERVAL=30000
-VITE_ENVIRONMENT=production
-VITE_BUILD_VERSION=1.0.0
-VITE_ANALYTICS_ENABLED=true
-VITE_ERROR_TRACKING_ENABLED=true
+### 4. CloudFront Cache Invalidation
+```bash
+aws cloudfront create-invalidation --distribution-id E2N7CVOJAW1LBN --paths "/*"
 ```
 
-### Development Environment (`.env.development`)
-```env
-VITE_API_BASE_URL=http://18.233.174.25
-VITE_APP_NAME=Book Review Platform (Dev)
-VITE_POLLING_INTERVAL=10000
-VITE_ENVIRONMENT=development
-VITE_BUILD_VERSION=dev
-```
+**Latest Invalidation ID**: `IDM4NJXMV5D8TF70Y2Y06VJSRX`
+**Previous Invalidation IDs**: 
+- `I6GZ7WCCQOAF10FPZ6K8JZQPBK` (15:58 UTC)
+- `IBVNGK77TXNGQK9UDTX698C85P` (15:46 UTC)
+- `ICEZBFQRCKRRUN8S93ZOHUSORW` (Initial)
 
 ## Security Features
 
-### Content Security Policy (CSP)
-Enhanced CSP headers in `index.html` protect against:
-- Cross-Site Scripting (XSS)
-- Code injection attacks
-- Unauthorized resource loading
+### CloudFront Security Headers
+- Strict-Transport-Security (HSTS) with 1-year max-age
+- Content-Type-Options (nosniff)
+- Frame-Options (DENY)
+- Referrer-Policy (strict-origin-when-cross-origin)
+- Permissions-Policy (camera, microphone, geolocation disabled)
 
-### Security Headers
-- **X-Content-Type-Options**: Prevents MIME-type sniffing
-- **X-Frame-Options**: Prevents clickjacking
-- **X-XSS-Protection**: Browser XSS protection
-- **Referrer-Policy**: Controls referrer information
-- **Permissions-Policy**: Restricts browser features
+### S3 Security
+- Server-side encryption (AES256)
+- Versioning enabled
+- Public access blocked (CloudFront only access)
+- Bucket policy restricted to CloudFront service principal
 
-## Monitoring and Analytics
+### Cache Configuration
 
-### Built-in Analytics
-The `src/utils/analytics.ts` module provides:
-- User interaction tracking
-- Performance metrics
-- Error tracking
-- Page view analytics
+### CloudFront Caching
+- **API Requests (`/api/*`)**: No caching (TTL = 0) - always fresh data from backend
+- **Default TTL**: 24 hours (86400s)
+- **Max TTL**: 1 year (31536000s)
+- **Assets TTL**: 1 year (static assets with content hash for cache busting)
+- **Compression**: Enabled (gzip and brotli)
 
-### Error Tracking
-Automatic error tracking includes:
-- JavaScript errors
-- Unhandled promise rejections
-- Network failures
-- User context information
+### SPA Routing Support
+Custom error responses configured for 403 and 404 errors redirect to `/index.html` for client-side routing. This ensures React Router handles all routes correctly.
 
-## Performance Optimization
+## Monitoring
 
-### Bundle Analysis
+### CloudWatch Logs
+- **Log Group**: `/aws/cloudfront/brs-frontend`
+- **Retention**: 14 days
+
+## Future Deployments
+
+### Quick Deployment
 ```bash
-# Analyze bundle size and composition
-npm run analyze
+# Build and deploy
+npm run build
+aws s3 sync dist/ s3://brs-frontend-bucket-2025/ --delete
+aws cloudfront create-invalidation --distribution-id E2N7CVOJAW1LBN --paths "/*"
 ```
 
-### Performance Features
-- **Code Splitting**: Route-based and vendor chunking
-- **Tree Shaking**: Eliminates dead code
-- **Compression**: Gzip compression via CloudFront
-- **Caching**: Strategic cache headers for assets
+### Using NPM Scripts
+```bash
+# Complete deployment pipeline (requires manual fix for PowerShell compatibility)
+# Note: npm run infra:deploy has issues with PowerShell commands in bash
+# Use manual deployment instead:
+npm run build
+aws s3 sync dist/ s3://brs-frontend-bucket-2025/ --delete
+aws cloudfront create-invalidation --distribution-id E2N7CVOJAW1LBN --paths "/*"
+```
 
-### Core Web Vitals
-The deployment is optimized for:
-- **Largest Contentful Paint (LCP)**: < 2.5s
-- **First Input Delay (FID)**: < 100ms
-- **Cumulative Layout Shift (CLS)**: < 0.1
+### Terraform Management
+```bash
+cd aws-configs
 
-## Available Scripts
+# View current infrastructure
+terraform output
 
-| Script | Description |
-|--------|-------------|
-| `npm run dev` | Start development server |
-| `npm run build` | Build for production |
-| `npm run build:production` | Build with linting |
-| `npm run lint` | Run ESLint |
-| `npm run lint:fix` | Fix ESLint errors |
-| `npm run preview` | Preview production build |
-| `npm run type-check` | TypeScript type checking |
-| `npm run test:build` | Build and preview |
-| `npm run deploy` | Deploy to AWS |
-| `npm run deploy:production` | Full production deployment |
-| `npm run rollback` | Rollback deployment |
-| `npm run setup:aws` | Setup AWS infrastructure |
-| `npm run analyze` | Analyze bundle size |
-| `npm run clean` | Clean build artifacts |
+# Update infrastructure
+terraform plan
+terraform apply
+
+# Destroy infrastructure (CAUTION!)
+terraform destroy
+```
+
+## Terraform Outputs
+
+To view all infrastructure details:
+```bash
+cd aws-configs
+terraform output
+```
+
+Key outputs available:
+- `website_url`: CloudFront distribution URL
+- `s3_bucket_name`: S3 bucket name
+- `cloudfront_distribution_id`: Distribution ID for invalidations
+- `deployment_commands`: Helper commands for deployment
+
+## Rollback Procedure
+
+In case of issues, use S3 versioning to rollback:
+```bash
+# List versions
+aws s3api list-object-versions --bucket brs-frontend-bucket-2025
+
+# Restore specific version
+aws s3api copy-object \
+  --copy-source brs-frontend-bucket-2025/index.html?versionId=VERSION_ID \
+  --bucket brs-frontend-bucket-2025 \
+  --key index.html
+
+# Invalidate cache
+aws cloudfront create-invalidation --distribution-id E2N7CVOJAW1LBN --paths "/*"
+```
+
+## Cost Optimization
+
+### Current Configuration
+- **S3**: Pay per GB stored + requests
+- **CloudFront**: PriceClass_100 (US, Canada, Europe)
+- **Backup Retention**: 30 days
+- **Log Retention**: 14 days
+
+### Estimated Costs
+- S3 Storage: ~$0.023/GB/month
+- CloudFront Data Transfer: ~$0.085/GB (first 10TB)
+- CloudWatch Logs: ~$0.50/GB ingested
 
 ## Troubleshooting
 
 ### Common Issues
 
-#### 1. SPA Routing Issues
-**Problem**: Direct URLs return 404 errors
-**Solution**: CloudFront custom error pages redirect 404s to index.html
+#### 1. 403 Forbidden on CloudFront
+- Check Origin Access Control configuration
+- Verify S3 bucket policy allows CloudFront
+- Ensure files exist in S3
 
-#### 2. Cache Invalidation Delays
-**Problem**: Updates not visible immediately
-**Solution**: Deployment script includes cache invalidation
+#### 2. Stale Content After Deployment
+- Create CloudFront invalidation
+- Wait 1-2 minutes for invalidation to complete
+- Check invalidation status in AWS console
 
-#### 3. CORS Errors
-**Problem**: API calls fail with CORS errors
-**Solution**: Check CORS configuration in S3 and API server
+#### 3. API Connection Errors
+- CloudFront proxies `/api/*` to backend automatically
+- No direct HTTP calls - all via HTTPS through CloudFront
+- Check CloudFront origin health in AWS console
+- Verify backend is accessible: `curl http://ec2-100-49-147-236.compute-1.amazonaws.com/api/v1/`
+- Check browser Network tab for actual error messages
 
 #### 4. Build Failures
-**Problem**: Build fails with TypeScript errors
-**Solution**: Run `npm run type-check` to identify issues
+- Run `npm run clean` to clear cache
+- Check `npm run type-check` for TypeScript errors
+- Verify all dependencies installed
 
-### Deployment Verification
-
-After deployment, verify:
-- [ ] Website loads from CloudFront URL
-- [ ] All routes work correctly (SPA routing)
-- [ ] API integration functions properly
-- [ ] Authentication flow works
-- [ ] Performance metrics meet targets
-
-### Rollback Process
-
-If issues occur after deployment:
-
+#### 5. NPM Script Deployment Issues
+**Issue**: `npm run infra:deploy` fails with PowerShell syntax errors in bash shell
+**Solution**: Use manual deployment commands instead:
 ```bash
-# List available backups
-npm run rollback
-
-# Rollback to specific backup
-npm run rollback backup-20250107-143022
+npm run build
+aws s3 sync dist/ s3://brs-frontend-bucket-2025/ --delete
+aws cloudfront create-invalidation --distribution-id E2N7CVOJAW1LBN --paths "/*"
 ```
-
-## Cost Optimization
-
-### AWS Cost Estimates (Monthly)
-- **S3 Storage**: $1-5 (depending on assets)
-- **CloudFront**: $5-20 (depending on traffic)
-- **Data Transfer**: $2-10 (depending on usage)
-- **Total**: $8-35/month for moderate traffic
-
-### Cost Optimization Tips
-- Use appropriate S3 storage classes
-- Optimize CloudFront price class
-- Regular cleanup of old deployments
-- Monitor usage with AWS Cost Explorer
+**Root Cause**: The `terraform:sync` and `terraform:invalidate` scripts use PowerShell-specific syntax (`Get-Content`) which doesn't work in bash environments.
 
 ## Maintenance
 
 ### Regular Tasks
-- [ ] **Weekly**: Update dependencies
-- [ ] **Monthly**: Security audits
-- [ ] **Quarterly**: Performance reviews
-- [ ] **Bi-annually**: Cost optimization reviews
+- Monitor CloudWatch logs for errors
+- Review S3 storage costs monthly
+- Update dependencies quarterly
+- Review and rotate old backup versions
+- Monitor CloudFront usage patterns
 
-### Update Process
-1. Test updates in development
-2. Run performance and security checks
-3. Deploy to staging (if available)
-4. Deploy to production with rollback plan
+### Backup Strategy
+- S3 versioning enabled (automatic)
+- Backup bucket with 30-day retention
+- Noncurrent versions expire after 30 days
 
 ## Support
 
-For deployment issues:
-1. Check deployment logs
-2. Verify AWS credentials and permissions
-3. Test build locally with `npm run test:build`
-4. Review CloudWatch logs for errors
+For infrastructure issues:
+1. Check AWS Console for service health
+2. Review CloudWatch logs
+3. Verify Terraform state matches deployed resources
+4. Contact AWS Support if needed
 
----
+## Notes
 
-**Last Updated**: January 7, 2025  
-**Version**: 1.0.0
+- Infrastructure managed by Terraform (IaC)
+- All resources tagged with Project, Environment, and ManagedBy
+- HTTPS enforced via CloudFront
+- IPv6 enabled on CloudFront
+- No custom domain configured (using CloudFront default)

@@ -197,6 +197,12 @@ export const fetchUserReviews = createAsyncThunk<
           lastName: reviewWithBook.user_name?.split(' ').slice(1).join(' ') || '',
           name: reviewWithBook.user_name || 'Anonymous User'
         },
+        book: reviewWithBook.book ? {
+          id: reviewWithBook.book.id,
+          title: reviewWithBook.book.title,
+          author: reviewWithBook.book.author,
+          coverImage: reviewWithBook.book.cover_image_url || reviewWithBook.book.coverImage
+        } : undefined,
         isOwn: true // User's own reviews
       } as Review));
     } else if ((response as any).success && (response as any).reviews) {

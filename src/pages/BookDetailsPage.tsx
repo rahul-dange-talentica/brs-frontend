@@ -237,13 +237,6 @@ export const BookDetailsPage: React.FC = () => {
           bookTitle={displayBook.title}
           averageRating={displayBook.averageRating}
           totalReviews={displayBook.totalReviews}
-          ratingDistribution={{
-            5: Math.floor(displayBook.totalReviews * 0.4),
-            4: Math.floor(displayBook.totalReviews * 0.3),
-            3: Math.floor(displayBook.totalReviews * 0.2),
-            2: Math.floor(displayBook.totalReviews * 0.08),
-            1: Math.floor(displayBook.totalReviews * 0.02)
-          }}
         />
       </Box>
     </Container>
